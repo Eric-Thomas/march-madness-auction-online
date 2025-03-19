@@ -42,14 +42,14 @@ origins = [
 ]
 app = FastAPI()
 app.add_middleware(
-    CORSMiddleware, allow_origins=origins, allow_credentials=True, allow_methods=["*"], allow_headers=["*"]
+    CORSMiddleware, allow_origins=["*"], allow_credentials=False, allow_methods=["*"], allow_headers=["*"]
 )
 
 # Dictionary to keep track of WebSocket connections for each game
 game_connections: dict[str, List[WebSocket]] = {}
 
 # Track Player Teams and Balance. Will turn into a database maybe
-gameTracker: GameTracker = GameTracker(year=2025, month="03", day=("20", "21"))
+gameTracker: GameTracker = GameTracker(year=2024, month="03", day=("21", "22"))
 
 # Dictionary to store countdown timer tasks
 countdown_tasks: dict[str, asyncio.Task] = {}
