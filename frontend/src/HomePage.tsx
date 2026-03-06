@@ -160,7 +160,7 @@ function HomePage() {
   const handleCreateGame = async (event: React.FormEvent) => {
     setDialogError("");
     try {
-      const response = await fetch(`http://${BACKEND_URL}/create-game/`, {
+      const response = await fetch(`https://${BACKEND_URL}/api/create-game/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -185,7 +185,7 @@ function HomePage() {
   const handleJoinGame = async (event: React.FormEvent) => {
     setDialogError("");
     try {
-      const response = await fetch(`http://${BACKEND_URL}/join-game/`, {
+      const response = await fetch(`https://${BACKEND_URL}/api/join-game/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -211,7 +211,7 @@ function HomePage() {
   const handleViewGame = async (event: React.FormEvent) => {
     setDialogError("");
     try {
-      const response = await fetch(`http://${BACKEND_URL}/view-game/`, {
+      const response = await fetch(`https://${BACKEND_URL}/api/view-game/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -315,7 +315,7 @@ function HomePage() {
             <b>{`${dialogMode} GAME`}</b>
           </DialogTitle>
 
-          <DialogContent sx={{ overflow: "visible", display: "flex", flexDirection: "column", marginTop: "20px" }}> 
+          <DialogContent sx={{ overflow: "visible", display: "flex", flexDirection: "column", marginTop: "20px" }}>
             {/* Display game error if any */}
             {dialogError ? <Alert severity="error">{dialogError}</Alert> : null}
 

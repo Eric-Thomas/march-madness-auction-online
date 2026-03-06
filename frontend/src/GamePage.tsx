@@ -29,7 +29,7 @@ function useGameWebSocket(gameId: string) {
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        const ws = new WebSocket(`ws://${BACKEND_URL}/ws/${gameId}`);
+        const ws = new WebSocket(`ws://${BACKEND_URL}/api/ws/${gameId}`);
 
         ws.onerror = (error) => {
             setError('WebSocket connection error');

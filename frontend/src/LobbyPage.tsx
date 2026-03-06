@@ -19,7 +19,7 @@ function LobbyPage() {
   const wsRef = useRef<WebSocket | null>(null); // Use useRef to hold the WebSocket connection
 
   useEffect(() => {
-    const ws = new WebSocket(`ws://${BACKEND_URL}/ws/${gameId}`);
+    const ws = new WebSocket(`ws://${BACKEND_URL}/api/ws/${gameId}`);
     wsRef.current = ws;
 
     ws.onmessage = (event) => {
