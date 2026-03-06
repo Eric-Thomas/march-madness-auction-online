@@ -3,7 +3,6 @@ import { Button, Typography, List, ListItem, Card, Chip } from "@mui/joy";
 import { Grid, Paper } from "@mui/material";
 import { useLocation, useNavigate } from "react-router-dom";
 
-import { BACKEND_URL } from "./Utils"
 import imageSrc from "./images/march_madness_logo_auction.png";
 import { ReactComponent as CrownIcon } from "./icons/crown.svg";
 import { ReactComponent as UserIcon } from "./icons/user.svg";
@@ -18,8 +17,13 @@ function LobbyPage() {
   const baseColor = "#FFD700";
   const wsRef = useRef<WebSocket | null>(null); // Use useRef to hold the WebSocket connection
 
+  const getWsUrl = (path: string) => {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const host = window.location.host;
+    return `${protocol}//${host}${path}`;
+  };
   useEffect(() => {
-    const ws = new WebSocket(`ws://${BACKEND_URL}/api/ws/${gameId}`);
+    const ws = new WebSocket(getWsUrl(`/api/ws/${gameId}`));
     wsRef.current = ws;
 
     ws.onmessage = (event) => {

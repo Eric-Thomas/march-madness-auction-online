@@ -5,7 +5,7 @@ import React, { useState, useEffect } from "react";
 
 import Bid from "./Bid";
 import Bracket from "./Bracket";
-import { PlayerInfo, TeamInfo, BACKEND_URL } from "./Utils"
+import { PlayerInfo, TeamInfo, } from "./Utils"
 import { ReactComponent as CrownIcon } from "./icons/crown.svg";
 import { ReactComponent as UserIcon } from "./icons/user.svg";
 
@@ -23,13 +23,18 @@ type WebSocketMessage = {
     all_teams?: TeamInfo[];
 };
 
+const getWsUrl = (path: string) => {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const host = window.location.host;
+    return `${protocol}//${host}${path}`;
+};
 // Extract WebSocket logic to a custom hook
 function useGameWebSocket(gameId: string) {
     const [wsData, setWsData] = useState<WebSocketMessage>({});
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        const ws = new WebSocket(`ws://${BACKEND_URL}/api/ws/${gameId}`);
+        const ws = new WebSocket(getWsUrl(`/api/ws/${gameId}`));
 
         ws.onerror = (error) => {
             setError('WebSocket connection error');

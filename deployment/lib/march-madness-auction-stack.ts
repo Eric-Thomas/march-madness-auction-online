@@ -117,8 +117,6 @@ export class MarchMadnessAuctionStack extends cdk.Stack {
       containerName: 'march-madness-auction-frontend',
       essential: true,
       environment: {
-        'REACT_APP_BACKEND_PORT': '443',
-        'REACT_APP_BACKEND_HOST': 'mmauctiongame.com',
         // Forces new deployment when the image is updated in ECR since timestamp changes
         'DEPLOY_TIMESTAMP': new Date().toISOString()
       },
@@ -163,8 +161,6 @@ export class MarchMadnessAuctionStack extends cdk.Stack {
         'UVICORN_PORT': '8000',
         'UVICORN_HOST': '0.0.0.0',
         'UVICORN_LOG_LEVEL': 'info',
-        'FRONTEND_HOST': 'mmauctiongame.com',
-        'FRONTEND_PORT': '443',
         // Forces new deployment when the image is updated in ECR since timestamp changes
         'DEPLOY_TIMESTAMP': new Date().toISOString()
       },
