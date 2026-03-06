@@ -56,6 +56,10 @@ countdown_tasks: dict[str, asyncio.Task] = {}
 
 # ================== URL PATHS ==================
 
+@app.get("/health")
+async def health_check():
+    return {"status": "ok"}
+
 @app.post("/create-game/")
 async def create_game(create_model: CreateModel) -> dict:
     new_game_id: str = "".join(random.choices(string.ascii_uppercase + string.digits, k=GAME_ID_NUM_CHAR))
