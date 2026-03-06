@@ -12,9 +12,9 @@ from app.bracket import get_teams, get_matches
 
 
 def missingPlayInPostProcess(teams: dict[str, TeamInfo]):
-    teams["Xavier/Texas"] = TeamInfo(
-        shortName="Xavier/Texas", urlName="", seed=11, region="Midwest"
-    )
+    # teams["Xavier/Texas"] = TeamInfo(
+    #     shortName="Xavier/Texas", urlName="", seed=11, region="Midwest"
+    # )
     return teams
 
 
