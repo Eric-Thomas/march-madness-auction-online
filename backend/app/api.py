@@ -56,11 +56,11 @@ countdown_tasks: dict[str, asyncio.Task] = {}
 
 # ================== URL PATHS ==================
 
-@app.get("/health")
+@app.get("/api/health")
 async def health_check():
     return {"status": "ok"}
 
-@app.post("/create-game/")
+@app.post("/api/create-game/")
 async def create_game(create_model: CreateModel) -> dict:
     new_game_id: str = "".join(random.choices(string.ascii_uppercase + string.digits, k=GAME_ID_NUM_CHAR))
     gameTracker.add_game(gameId=new_game_id, creator=create_model.player)
@@ -69,7 +69,7 @@ async def create_game(create_model: CreateModel) -> dict:
     return {"id": new_game_id}
 
 
-@app.post("/join-game/")
+@app.post("/api/join-game/")
 async def join_game(join_model: JoinModel):
     if join_model.gameId not in gameTracker.games:
         raise HTTPException(status_code=404, detail="Game ID not found")
@@ -86,13 +86,13 @@ async def join_game(join_model: JoinModel):
     return {"detail": "Joined game successfully"}
 
 
-@app.post("/view-game/")
+@app.post("/api/view-game/")
 async def view_game(view_model: ViewModel):
     if view_model.gameId not in gameTracker.games:
         raise HTTPException(status_code=404, detail="Game ID not found")
-    
+
     gameTracker.calculate_player_points(view_model.gameId)
-    
+
     if view_model.gameId in game_connections:
         for ws in game_connections[view_model.gameId]:
             await ws.send_json({"players": jsonify_dict(gameTracker.get_all_players(view_model.gameId))})
@@ -127,7 +127,7 @@ async def finalize_bid(game_id: str):
         await ws.send_json({"remaining": jsonify_list(gameTracker.get_remaining_teams(game_id))})
 
 
-@app.websocket("/ws/{game_id}")
+@app.websocket("/api/ws/{game_id}")
 async def websocket_endpoint(websocket: WebSocket, game_id: str):
     await websocket.accept()
     if game_id not in game_connections:
@@ -259,7 +259,7 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str):
         game_connections[game_id].remove(websocket)
 
 
-@app.post("/bid/")
+@app.post("/api/bid/")
 async def bid(bid_model: BidModel):
     if bid_model.gameId not in gameTracker.games:
         raise HTTPException(status_code=404, detail="Game ID not found")
