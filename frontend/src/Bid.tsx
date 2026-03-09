@@ -3,7 +3,7 @@ import { Button, Input } from '@mui/joy';
 import { Grid } from '@mui/material';
 import { debounce } from 'lodash';
 
-import { BACKEND_URL } from "./Utils"
+import { BACKEND_HTTP_URL } from "./Utils"
 
 import './css/App.css';
 
@@ -53,7 +53,7 @@ function Bid(props: BidProps) {
 
     setIsSubmitting(true);
     try {
-      const response = await fetch(`http://${BACKEND_URL}/bid/`, {
+      const response = await fetch(`${BACKEND_HTTP_URL}/bid/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -5,7 +5,7 @@ import React, { useState, useEffect } from "react";
 
 import Bid from "./Bid";
 import Bracket from "./Bracket";
-import { PlayerInfo, TeamInfo, BACKEND_URL } from "./Utils"
+import { PlayerInfo, TeamInfo, BACKEND_WS_URL } from "./Utils"
 import { ReactComponent as CrownIcon } from "./icons/crown.svg";
 import { ReactComponent as UserIcon } from "./icons/user.svg";
 
@@ -29,7 +29,7 @@ function useGameWebSocket(gameId: string) {
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        const ws = new WebSocket(`ws://${BACKEND_URL}/ws/${gameId}`);
+        const ws = new WebSocket(`${BACKEND_WS_URL}/ws/${gameId}`);
 
         ws.onerror = (error) => {
             setError('WebSocket connection error');
@@ -145,6 +145,15 @@ function GamePage() {
     };
 
     const baseColor = "#FFD700";
+    const panelSurface = {
+        backgroundColor: "rgba(9, 12, 17, 0.72)",
+        border: 1,
+        borderColor: "rgba(255, 255, 255, 0.12)",
+        borderRadius: "22px",
+        boxShadow: "0px 18px 42px rgba(0, 0, 0, 0.28)",
+        backdropFilter: "blur(12px)",
+        color: "#f5eee6"
+    };
 
     const { wsData, error } = useGameWebSocket(gameId);
 
@@ -180,31 +189,96 @@ function GamePage() {
         }
     }, [wsData.players, wsData.bid, wsData.countdown, wsData.team, wsData.log, wsData.remaining, wsData.all_teams, error]);
 
-    return (
-        <div id="outer-container">
-            {/* backgroundColor: "rgba(0, 0, 0, 0)" */}
-            <Paper elevation={1} sx={{ height: "720px", width: "1400px", padding: "10px", backgroundColor: "white" }} >
-                <Grid container spacing={1} sx={{ display: "flex", justifyContent: "center", alignItems: "center", flexDirection: "row", height: "calc(100vh - 170px)", minHeight: "100%" }}>
-                    {/* Left side */}
-                    <Grid item xs={10}>
-                        <Grid container spacing={1} sx={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
+    const totalAuctions = allTeams.length === 65 ? 64 : allTeams.length;
+    const auctionNumber = totalAuctions > 0
+        ? Math.min(totalAuctions, Math.max(1, totalAuctions - remainingTeams.length + (team.shortName ? 1 : 0)))
+        : 0;
 
-                            {/* Display bracket */}
-                            <Grid item xs={12} sx={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
-                                {/* backgroundColor: "rgba(0, 0, 0, 0)" */}
-                                <Card sx={{ height: "555px", width: "100%", padding: "5px", backgroundColor: "white", border: 1, borderRadius: 1, borderColor: "black", boxShadow: "0px 8px 16px rgba(0, 0, 0, 0.2)" }}>
+    return (
+        <div id="outer-container" className="game-page-shell">
+            {/* backgroundColor: "rgba(0, 0, 0, 0)" */}
+            <Paper
+                elevation={0}
+                sx={{
+                    minHeight: "calc(100vh - 48px)",
+                    width: "min(1640px, 100%)",
+                    padding: 0,
+                    overflow: "visible",
+                    backgroundColor: "transparent",
+                    boxShadow: "none"
+                }}
+            >
+                <Grid container spacing={2} sx={{ display: "flex", justifyContent: "center", alignItems: "stretch", flexDirection: "row", minHeight: "100%" }}>
+                    <Grid item xs={12} lg={2}>
+                        <Card sx={{ ...panelSurface, minHeight: { xs: 220, lg: 760 }, width: "100%", overflowY: "auto" }}>
+                            <List sx={{ width: "100%" }}>
+                                {playerInfos.size > 0 ?
+                                    Array.from(playerInfos.entries()).map(([player, player_info], i) => {
+                                        const hue = (i * 30) % 360;
+                                        const playerColor = `hsl(${hue}, 70%, 50%)`;
+
+                                        return (
+                                            <React.Fragment key={i}>
+                                                <ListItem>
+                                                    {i === 0 ? <CrownIcon fill={baseColor} width="20px" height="20px" /> : <UserIcon fill={playerColor} width="20px" height="20px" />}
+                                                    <Chip sx={{ padding: "0 20px", backgroundColor: "rgba(255, 255, 255, 0.06)", border: "1px solid rgba(255, 255, 255, 0.08)" }}>
+                                                        <Typography sx={{ color: "#fff1e7", fontFamily: "threeDim", letterSpacing: "0.06em" }}>
+                                                            {player}
+                                                        </Typography>
+                                                        <Typography sx={{ fontSize: "12px", color: "rgba(245, 238, 230, 0.78)" }}>
+                                                            Balance: $ {player_info["balance"].toFixed(2)}
+                                                        </Typography>
+                                                        <Typography sx={{ fontSize: "12px", color: "rgba(245, 238, 230, 0.68)" }}>
+                                                            Teams:
+                                                        </Typography>
+                                                        {player_info["teams"].map((temp_team: TeamInfo, teamIndex: number) => (
+                                                            <Typography key={teamIndex} sx={{ marginLeft: "10px", fontSize: "12px", color: "rgba(245, 238, 230, 0.72)" }}>
+                                                                - {temp_team.shortName} (${temp_team.purchasePrice})
+                                                            </Typography>
+                                                        ))}
+                                                    </Chip>
+                                                </ListItem>
+                                            </React.Fragment>
+                                        );
+                                    })
+                                    : <Typography>No players</Typography>
+                                }
+                            </List>
+                        </Card>
+                    </Grid>
+
+                    <Grid item xs={12} lg={8}>
+                        <Grid container spacing={2} sx={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
+                            <Grid item xs={12}>
+                                <Card
+                                    sx={{
+                                        height: { xs: "540px", md: "760px", lg: "840px" },
+                                        width: "100%",
+                                        padding: 0,
+                                        overflow: "hidden",
+                                        backgroundColor: "transparent",
+                                        border: 0,
+                                        borderRadius: 0,
+                                        boxShadow: "none"
+                                    }}
+                                >
                                     {allTeams.length > 0 ?
-                                        <Bracket all_teams={allTeams} selected_team={team} />
-                                        : <Typography>No teams available</Typography>
+                                        <Bracket
+                                            all_teams={allTeams}
+                                            selected_team={team}
+                                            gameCode={gameId}
+                                            auctionNumber={auctionNumber}
+                                            totalAuctions={totalAuctions}
+                                        />
+                                        : <Typography sx={{ color: "white", padding: 2 }}>No teams available</Typography>
                                     }
                                 </Card>
                             </Grid>
 
-                            {/* Team to bid on */}
                             <Grid item xs={12} sx={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
                                 <Grid container sx={{ justifyContent: "center", alignItems: "center", margin: 0 }}>
-                                    <Grid item xs={8} sx={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
-                                        <Card sx={{ height: "135px", width: "100%", backgroundColor: "white", border: 1, borderRadius: 1, borderColor: "black", boxShadow: "0px 8px 16px rgba(0, 0, 0, 0.2)" }}>
+                                    <Grid item xs={12} md={10} lg={9} sx={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
+                                        <Card sx={{ ...panelSurface, height: "150px", width: "100%", paddingX: 1.5 }}>
                                             <Grid container sx={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
                                                 <Grid container spacing={1} sx={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
                                                     <Grid item>
@@ -218,20 +292,18 @@ function GamePage() {
                                                         </Typography>
                                                     </Grid>
                                                 </Grid>
-                                                {/* Countdown timer */}
                                                 <Grid item sx={{ display: "flex", justifyContent: "left", alignItems: "left" }}>
-                                                    <Card sx={{ border: 5, height: "50px", width: "50px", backgroundColor: "black", borderRadius: 0, borderColor: "white" }}>
+                                                    <Card sx={{ border: 2, height: "54px", width: "54px", backgroundColor: "rgba(4, 6, 10, 0.95)", borderRadius: "14px", borderColor: "rgba(255, 255, 255, 0.18)" }}>
                                                         <Typography sx={{ color: countdown <= 5 ? "red" : "white", textAlign: "center", fontFamily: "clock", fontSize: "45px", my: "-10px" }}>
                                                             {countdown.toString().padStart(2, "0")}
                                                         </Typography>
                                                     </Card>
                                                 </Grid>
 
-                                                {/* Bid */}
                                                 <Grid item xs={4} sx={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
                                                     <Grid container sx={{ display: "flex", justifyContent: "center", alignItems: "center", flexDirection: "column" }}>
                                                         <Grid item sx={{ display: "flex", justifyContent: "left", alignItems: "center" }}>
-                                                            <Typography sx={{ justifyContent: "center", fontSize: "20px" }}>
+                                                            <Typography sx={{ justifyContent: "center", fontSize: "20px", color: "#f7efe4" }}>
                                                                 Current bid: ${currentHighestBid.toFixed(2)}
                                                             </Typography>
                                                         </Grid>
@@ -254,84 +326,36 @@ function GamePage() {
                         </Grid>
                     </Grid>
 
-                    {/* Right side */}
-                    <Grid item xs={2} sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
-                        <Grid container spacing={1} sx={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
+                    <Grid item xs={12} lg={2}>
+                        <Card sx={{ ...panelSurface, minHeight: { xs: 320, lg: 760 }, maxHeight: { xs: "none", lg: 760 }, overflowY: "auto", width: "100%" }}>
+                            <Grid container spacing={1} sx={{ flexWrap: "wrap", padding: 1 }}>
+                                {remainingTeams.length > 0 ?
+                                    remainingTeams.map((temp_team, i) => {
+                                        const teamLogo = temp_team.region !== "region" ? `https://i.turner.ncaa.com/sites/default/files/images/logos/schools/bgl/${temp_team.urlName}.svg` : "";
 
-                            {/* Player */}
-                            <Grid item xs={12} sx={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
-                                <Card sx={{ height: 200, overflow: "auto", overflowY: "auto", width: "100%", backgroundColor: "white", border: 1, borderRadius: 1, borderColor: "black", boxShadow: "0px 8px 16px rgba(0, 0, 0, 0.2)" }}>
-                                    <List sx={{ width: "100%" }}>
-                                        {playerInfos.size > 0 ?
-                                            Array.from(playerInfos.entries()).map(([player, player_info], i) => {
-                                                // Calculate hue based on index
-                                                const hue = (i * 30) % 360; // Adjust 30 as needed to change the color spacing
-                                                const playerColor = `hsl(${hue}, 70%, 50%)`; // Adjust saturation and lightness as needed
-
-                                                return (
-                                                    <React.Fragment key={i}>
-                                                        <ListItem>
-                                                            {i === 0 ? <CrownIcon fill={baseColor} width="20px" height="20px" /> : <UserIcon fill={playerColor} width="20px" height="20px" />}
-                                                            <Chip sx={{ padding: "0 20px", backgroundColor: "var(--off-white-color)" }}>
-                                                                <Typography sx={{ color: playerColor, backgroundImage: "linear-gradient(to bottom,rgb(218, 4, 4) 10%, rgb(175, 2, 2) 40%, rgb(48, 1, 1) 90%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", fontFamily: "doubleFeature" }}>
-                                                                    {player}
-                                                                </Typography>
-                                                                <Typography sx={{ fontSize: "12px" }}>
-                                                                    Balance: $ {player_info["balance"].toFixed(2)}
-                                                                </Typography>
-                                                                <Typography sx={{ fontSize: "12px" }}>
-                                                                    Teams:
-                                                                </Typography>
-                                                                {player_info["teams"].map((temp_team: TeamInfo, teamIndex: number) => (
-                                                                    <Typography key={teamIndex} sx={{ marginLeft: "10px", fontSize: "12px" }}>
-                                                                        - {temp_team.shortName} (${temp_team.purchasePrice})
-                                                                    </Typography>
-                                                                ))}
-                                                            </Chip>
-                                                        </ListItem>
-                                                    </React.Fragment>
-                                                );
-                                            })
-                                            : <Typography>No players</Typography>
-                                        }
-                                    </List>
-                                </Card>
+                                        return (
+                                            <Grid item key={i} xs="auto">
+                                                <Chip sx={{ backgroundColor: "rgba(255, 255, 255, 0.08)", border: "1px solid rgba(255, 255, 255, 0.06)" }}>
+                                                    <Typography sx={{ color: "#f6eee5", fontSize: "12px" }}>
+                                                        {temp_team.region !== "region" && teamLogo && (
+                                                            <img src={teamLogo} style={{ width: "10px", height: "10px", paddingRight: 4 }} />
+                                                        )}
+                                                        {temp_team.shortName} ({temp_team.seed})
+                                                    </Typography>
+                                                </Chip>
+                                            </Grid>
+                                        );
+                                    })
+                                    : <Typography>No teams available</Typography>
+                                }
                             </Grid>
-
-                            {/* Remaining Teams */}
-                            <Grid item xs={12} sx={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
-                                <Card sx={{ maxHeight: 505, overflowY: "auto", width: "100%", backgroundColor: "white", border: 1, borderRadius: 1, borderColor: "black", boxShadow: "0px 8px 16px rgba(0, 0, 0, 0.2)" }}>
-                                    <Grid container spacing={1} sx={{ flexWrap: "wrap", padding: 1 }}>
-                                        {remainingTeams.length > 0 ?
-                                            remainingTeams.map((temp_team, i) => {
-                                                const teamLogo = temp_team.region !== "region" ? `https://i.turner.ncaa.com/sites/default/files/images/logos/schools/bgl/${temp_team.urlName}.svg` : "";
-
-                                                return (
-                                                    <Grid item key={i} xs="auto">
-                                                        <Chip sx={{ backgroundColor: "var(--off-white-color)" }}>
-                                                            <Typography sx={{ color: "black", fontSize: "12px" }}>
-                                                                {temp_team.region !== "region" && teamLogo && (
-                                                                    <img src={teamLogo} style={{ width: "10px", height: "10px", paddingRight: 4 }} />
-                                                                )}
-                                                                {temp_team.shortName} ({temp_team.seed})
-                                                            </Typography>
-                                                        </Chip>
-                                                    </Grid>
-                                                );
-                                            })
-                                            : <Typography>No teams available</Typography>
-                                        }
-                                    </Grid>
-                                </Card>
-                            </Grid>
-
-                        </Grid>
+                        </Card>
                     </Grid>
 
                     {/* Floating button showing number of teams remaining */}
-                    <Grid item xs={12} sx={{ display: "flex", justifyContent: "right", alignItems: "right", marginTop: "-80px" }}>
-                        <Fab variant="extended" size="small" sx={{ backgroundColor: "var(--off-white-color)" }}>
-                            <Typography justifyContent="center" sx={{ fontSize: "12px" }}><b>Teams Remaining: {remainingTeams.length}</b></Typography>
+                    <Grid item xs={12} sx={{ display: "flex", justifyContent: { xs: "center", lg: "right" }, alignItems: "right", marginTop: { xs: 0, lg: "-60px" } }}>
+                        <Fab variant="extended" size="small" sx={{ backgroundColor: "rgba(9, 12, 17, 0.82)", border: "1px solid rgba(255, 255, 255, 0.14)", boxShadow: "0 16px 28px rgba(0,0,0,0.22)" }}>
+                            <Typography justifyContent="center" sx={{ fontSize: "12px", color: "#f7efe4" }}><b>Teams Remaining: {remainingTeams.length}</b></Typography>
                         </Fab>
                     </Grid>
 

@@ -6,7 +6,7 @@ import VolumeUpIcon from '@mui/icons-material/VolumeUp';
 import VolumeOffIcon from '@mui/icons-material/VolumeOff';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 
-import { BACKEND_URL } from "./Utils"
+import { BACKEND_HTTP_URL } from "./Utils"
 import imageSrc from "./images/march_madness_logo_auction.png";
 import "./css/Fonts.css";
 
@@ -160,7 +160,7 @@ function HomePage() {
   const handleCreateGame = async (event: React.FormEvent) => {
     setDialogError("");
     try {
-      const response = await fetch(`http://${BACKEND_URL}/create-game/`, {
+      const response = await fetch(`${BACKEND_HTTP_URL}/create-game/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -185,7 +185,7 @@ function HomePage() {
   const handleJoinGame = async (event: React.FormEvent) => {
     setDialogError("");
     try {
-      const response = await fetch(`http://${BACKEND_URL}/join-game/`, {
+      const response = await fetch(`${BACKEND_HTTP_URL}/join-game/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -211,7 +211,7 @@ function HomePage() {
   const handleViewGame = async (event: React.FormEvent) => {
     setDialogError("");
     try {
-      const response = await fetch(`http://${BACKEND_URL}/view-game/`, {
+      const response = await fetch(`${BACKEND_HTTP_URL}/view-game/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

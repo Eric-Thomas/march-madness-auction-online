@@ -1,309 +1,701 @@
-import React from "react";
-import { Box, Card, Typography, Grid, Divider } from "@mui/material";
-import { GenerateRegionBracketData, IntegrateMatchResults, TeamInfo, Match } from "./Utils"
-import imageSrc from "./images/march_madness_logo.png";
-import BBImageSrc from "./images/basketball.png";
+import React, { useEffect, useRef, useState } from "react";
 
+import { GenerateRegionBracketData, Match, TeamInfo } from "./Utils";
+import "./css/Bracket.css";
 
-interface MatchProps {
-  match: Match
-  reverse: boolean
-  highlight: boolean
+interface DisplayTeam {
+  shortName: string;
+  seed?: number | null;
+  urlName?: string;
+  placeholder?: boolean;
 }
 
-function MatchComponent(props: MatchProps) {
-  const is_determined = props.match.participants[0];
-
-  const team1Logo = is_determined ? `https://i.turner.ncaa.com/sites/default/files/images/logos/schools/bgl/${props.match.participants[0].urlName}.svg` : "";
-  const team2Logo = is_determined ? `https://i.turner.ncaa.com/sites/default/files/images/logos/schools/bgl/${props.match.participants[1].urlName}.svg` : "";
-
-  return (
-    <Card sx={{ margin: 0.5, padding: 1, border: props.highlight ? 3 : 1, borderRadius: 0, borderColor: props.highlight ? "var(--neon-yellow-color)" : "var(--light-grey-color)", width: props.match.participants[0] ? "180px" : "30px" }}>
-      <Grid container sx={{ display: "flex", justifyContent: props.reverse ? "right" : "left", alignItems: props.reverse ? "right" : "left" }}>
-        {
-          props.reverse ?
-            <>
-              {/* Team name */}
-              <Grid item xs={6} sx={{ display: "flex", justifyContent: "right", alignItems: "right" }}>
-                <Typography variant="body2" justifyContent="right" sx={{ color: is_determined ? "var(--tertiary-color)" : "gray", fontSize: "10px" }}>
-                  {is_determined ? props.match.participants[0].shortName : "TBD"}
-                </Typography>
-              </Grid>
-              <Grid item xs={2} sx={{ display: "flex", justifyContent: "left", alignItems: "left" }}>
-                {/* Team seed */}
-                <Typography variant="body2" justifyContent="left" sx={{ color: "gray", fontSize: "10px", marginLeft: "5px", marginRight: "5px" }}>
-                  {is_determined ? props.match.participants[0].seed : ""}
-                </Typography>
-              </Grid>
-              <Grid item xs={2} sx={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
-                {/* Team logo */}
-                {is_determined && (<img src={team1Logo} alt={`${props.match.participants[0].shortName} logo`} style={{ width: "20px", height: "20px" }} />)}
-              </Grid>
-            </>
-            :
-            <>
-              <Grid item xs={2} sx={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
-                {/* Team logo */}
-                {is_determined && (<img src={team1Logo} alt={`${props.match.participants[0].shortName} logo`} style={{ width: "20px", height: "20px" }} />)}
-              </Grid>
-              <Grid item xs={2} sx={{ display: "flex", justifyContent: "right", alignItems: "right" }}>
-                {/* Team seed */}
-                <Typography variant="body2" justifyContent="right" sx={{ color: "gray", fontSize: "10px", marginLeft: "5px", marginRight: "5px" }}>
-                  {is_determined ? props.match.participants[0].seed : ""}
-                </Typography>
-              </Grid>
-              {/* Team name */}
-              <Grid item xs={6} sx={{ display: "flex", justifyContent: "left", alignItems: "left" }}>
-                <Typography variant="body2" justifyContent="left" sx={{ color: is_determined ? "var(--tertiary-color)" : "gray", fontSize: "10px" }}>
-                  {is_determined ? props.match.participants[0].shortName : "TBD"}
-                </Typography>
-              </Grid>
-            </>
-        }
-      </Grid>
-
-      <Grid item xs={12}>
-        <Divider sx={{ marginTop: '1px', marginBottom: '1px' }} />
-      </Grid>
-
-      <Grid sx={{ display: "flex", justifyContent: props.reverse ? "right" : "left", alignItems: props.reverse ? "right" : "left" }}>
-        {
-          props.reverse ?
-            <>
-              {/* Team name */}
-              <Grid item xs={6} sx={{ display: "flex", justifyContent: "right", alignItems: "right" }}>
-                <Typography variant="body2" justifyContent="right" sx={{ color: is_determined ? "var(--tertiary-color)" : "gray", fontSize: "10px" }}>
-                  {is_determined ? props.match.participants[1].shortName : "TBD"}
-                </Typography>
-              </Grid>
-              <Grid item xs={2} sx={{ display: "flex", justifyContent: "left", alignItems: "left" }}>
-                {/* Team seed */}
-                <Typography variant="body2" justifyContent="left" sx={{ color: "gray", fontSize: "10px", marginLeft: "5px", marginRight: "5px" }}>
-                  {is_determined ? props.match.participants[1].seed : ""}
-                </Typography>
-              </Grid>
-              <Grid item xs={2} sx={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
-                {/* Team logo */}
-                {is_determined && (<img src={team2Logo} alt={`${props.match.participants[1].shortName} logo`} style={{ width: "20px", height: "20px" }} />)}
-              </Grid>
-            </>
-            :
-            <>
-              <Grid item xs={2} sx={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
-                {/* Team logo */}
-                {is_determined && (<img src={team2Logo} alt={`${props.match.participants[1].shortName} logo`} style={{ width: "20px", height: "20px" }} />)}
-              </Grid>
-              <Grid item xs={2} sx={{ display: "flex", justifyContent: "right", alignItems: "right" }}>
-                {/* Team seed */}
-                <Typography variant="body2" justifyContent="right" sx={{ color: "gray", fontSize: "10px", marginLeft: "5px", marginRight: "5px" }}>
-                  {is_determined ? props.match.participants[1].seed : ""}
-                </Typography>
-              </Grid>
-              {/* Team name */}
-              <Grid item xs={6} sx={{ display: "flex", justifyContent: "left", alignItems: "left" }}>
-                <Typography variant="body2" justifyContent="left" sx={{ color: is_determined ? "var(--tertiary-color)" : "gray", fontSize: "10px" }}>
-                  {is_determined ? props.match.participants[1].shortName : "TBD"}
-                </Typography>
-              </Grid>
-            </>
-        }
-      </Grid>
-    </Card>
-  );
+interface PositionedCard {
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rows: DisplayTeam[];
+  title?: string;
+  highlight: boolean;
+  selectedRowIndexes: number[];
+  tone?: "match" | "path" | "center";
 }
 
-interface RegionProps {
-  region_name: string;
-  region_teams: TeamInfo[];
-  reverse: boolean
-  selected_team?: TeamInfo
-  match_results?: Match[] | null
+interface ConnectorLayout {
+  id: string;
+  d: string;
+  joints: Array<{ x: number; y: number }>;
 }
 
-function Region(props: RegionProps) {
-  let matches = GenerateRegionBracketData(props.region_teams);
-
-  if (props.match_results) {
-    matches = IntegrateMatchResults(matches, props.match_results);
-  }
-
-  // Sort matches by rounds 
-  const rounds_sorted_matches = new Map<string, Match[]>();
-  matches.forEach((item) => {
-    if (!rounds_sorted_matches.has(item.roundName)) {
-      rounds_sorted_matches.set(item.roundName, []);
-    }
-    rounds_sorted_matches.get(item.roundName)!.push(item);
-  });
-
-  // Reverse bracket
-  const sortedRounds = Array.from(rounds_sorted_matches.entries());
-  const roundsToRender = props.reverse ? sortedRounds.reverse() : sortedRounds;
-
-  return (
-    // Display regional bracket
-    <Grid container sx={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
-      {roundsToRender.map(([round, matchArr]) => (
-        <Grid item key={round}>
-
-          {/* Column for each round */}
-          <Grid container direction="column" rowSpacing={10 * (5 - matchArr.length)} sx={{ display: "flex", justifyContent: "center", alignItems: "center", margin: matchArr.length === 8 ? 0 : undefined }}>
-            {matchArr.map((val) => {
-
-              // highlight match if current team is a participant or seed 15/16 bundle 
-              const toHighlight = !!(
-                props.selected_team &&
-                val.participants[0] &&
-                val.participants[1] &&
-                (
-                  props.selected_team.shortName === val.participants[0].shortName ||
-                  props.selected_team.shortName === val.participants[1].shortName ||
-                  (props.selected_team.region === "bundle" &&
-                    (props.selected_team.seed === val.participants[0].seed ||
-                      props.selected_team.seed === val.participants[1].seed))
-                )
-              );
-
-              return (
-                <Grid item key={`${round}_${val.id}`}>
-
-                  {/* Display region name above final 8 */}
-                  {matchArr.length === 1 && (
-                    <Grid item sx={{ display: "flex", justifyContent: "center", alignItems: "center", flexDirection: "row" }}>
-                      <Typography variant="body2" justifyContent="center" sx={{ color: "black", fontSize: "10px" }}>
-                        {props.region_name}
-                      </Typography>
-                    </Grid>
-                  )}
-
-                  {/* Display match */}
-                  <MatchComponent match={val} reverse={props.reverse} highlight={toHighlight} />
-                </Grid>
-              );
-            })}
-          </Grid>
-        </Grid>
-      ))}
-    </Grid>
-  );
+interface RegionLayout {
+  cards: PositionedCard[];
+  connectors: ConnectorLayout[];
+  roundLabelPositions: number[];
+  regionAnchor: { x: number; y: number };
 }
 
 interface BracketProps {
-  all_teams: TeamInfo[]
-  selected_team?: TeamInfo
-  match_results?: Match[]
+  all_teams: TeamInfo[];
+  selected_team?: TeamInfo;
+  match_results?: Match[];
+  gameCode?: string;
+  auctionNumber?: number;
+  totalAuctions?: number;
+}
+
+type RegionSide = "left" | "right";
+
+const REGION_POSITIONS = [
+  { name: "South", side: "left" as RegionSide, top: 120, left: 54 },
+  { name: "East", side: "left" as RegionSide, top: 888, left: 54 },
+  { name: "Midwest", side: "right" as RegionSide, top: 120, left: 1564 },
+  { name: "West", side: "right" as RegionSide, top: 888, left: 1564 },
+];
+
+const ROUND_LABELS = ["Round 1", "Round 2", "Sweet 16", "Elite 8"];
+const ROUND_WIDTHS = [248, 214, 194, 172];
+const REGION_WIDTH = 962;
+const REGION_HEIGHT = 596;
+const REGION_PADDING_X = 16;
+const REGION_PADDING_TOP = 54;
+const COLUMN_GAP = 24;
+const MATCH_HEIGHT = 58;
+const MATCH_GAP = 10;
+const CANVAS_WIDTH = 2580;
+const CANVAS_HEIGHT = 1640;
+const SEMI_WIDTH = 196;
+const CHAMP_WIDTH = 228;
+const CENTER_CARD_HEIGHT = 64;
+const CENTER_X = CANVAS_WIDTH / 2;
+const SEMI_LEFT_X = CENTER_X - 364;
+const SEMI_RIGHT_X = CENTER_X + 168;
+const CHAMP_X = CENTER_X - CHAMP_WIDTH / 2;
+const TOP_SEMI_Y = 602;
+const BOTTOM_SEMI_Y = 992;
+const CHAMP_Y = 810;
+
+function groupMatchesByRound(matches: Match[]) {
+  const rounds = new Map<number, Match[]>();
+
+  matches.forEach((match) => {
+    const roundNumber = Number(match.roundName.match(/(\d+)/)?.[1] ?? "1") - 1;
+    if (!rounds.has(roundNumber)) {
+      rounds.set(roundNumber, []);
+    }
+    rounds.get(roundNumber)!.push(match);
+  });
+
+  return Array.from(rounds.entries())
+    .sort(([left], [right]) => left - right)
+    .map(([, roundMatches]) => [...roundMatches].sort((left, right) => left.id - right.id));
+}
+
+function buildFramePath(width: number, height: number, inset = 0) {
+  const left = 2 + inset;
+  const top = 2 + inset;
+  const right = width - 2 - inset;
+  const bottom = height - 2 - inset;
+  const notch = 12;
+  const cut = 14;
+
+  return `M ${left + notch} ${top} H ${right - cut} L ${right} ${top + cut} V ${bottom - cut} L ${right - cut} ${bottom} H ${left + notch} L ${left} ${bottom - cut} V ${top + cut} Z`;
+}
+
+function createConnector(id: string, startX: number, startY: number, endX: number, endY: number): ConnectorLayout {
+  const elbowX = startX + (endX - startX) / 2;
+
+  return {
+    id,
+    d: `M ${startX} ${startY} H ${elbowX} V ${endY} H ${endX}`,
+    joints: [
+      { x: startX, y: startY },
+      { x: elbowX, y: startY },
+      { x: elbowX, y: endY },
+      { x: endX, y: endY },
+    ],
+  };
+}
+
+function getLogoUrl(urlName?: string) {
+  return urlName
+    ? `https://i.turner.ncaa.com/sites/default/files/images/logos/schools/bgl/${urlName}.svg`
+    : "";
+}
+
+function createPlaceholderTeam(): DisplayTeam {
+  return {
+    shortName: "",
+    placeholder: true,
+  };
+}
+
+function isSelectedTeam(team: TeamInfo, selectedTeam?: TeamInfo) {
+  if (!selectedTeam) {
+    return false;
+  }
+
+  if (selectedTeam.region === "bundle") {
+    return team.seed === selectedTeam.seed;
+  }
+
+  return team.shortName === selectedTeam.shortName;
+}
+
+function getSelectedIndexes(teams: TeamInfo[], selectedTeam?: TeamInfo) {
+  return teams.reduce<number[]>((indexes, team, index) => {
+    if (isSelectedTeam(team, selectedTeam)) {
+      indexes.push(index);
+    }
+    return indexes;
+  }, []);
+}
+
+function buildRegionLayout(regionName: string, regionTeams: TeamInfo[], side: RegionSide, originX: number, originY: number, selectedTeam?: TeamInfo): RegionLayout {
+  const rounds = groupMatchesByRound(GenerateRegionBracketData(regionTeams));
+  const outerX = side === "left"
+    ? originX + REGION_PADDING_X
+    : originX + REGION_WIDTH - REGION_PADDING_X - ROUND_WIDTHS[0];
+  const columnXs: number[] = [];
+
+  columnXs[0] = outerX;
+  for (let roundIndex = 1; roundIndex < ROUND_WIDTHS.length; roundIndex += 1) {
+    columnXs[roundIndex] = side === "left"
+      ? columnXs[roundIndex - 1] + ROUND_WIDTHS[roundIndex - 1] + COLUMN_GAP
+      : columnXs[roundIndex - 1] - COLUMN_GAP - ROUND_WIDTHS[roundIndex];
+  }
+
+  const cardsByRound: PositionedCard[][] = rounds.map((roundMatches, roundIndex) => {
+    const step = (MATCH_HEIGHT + MATCH_GAP) * Math.pow(2, roundIndex);
+
+    return roundMatches.map((match, matchIndex) => {
+      const teams = match.participants.filter(Boolean);
+      const selectedIndexes = getSelectedIndexes(teams, selectedTeam);
+
+      return {
+        id: `${regionName}_${roundIndex}_${match.id}`,
+        x: columnXs[roundIndex],
+        y: originY + REGION_PADDING_TOP + step * matchIndex + (step - MATCH_HEIGHT) / 2,
+        width: ROUND_WIDTHS[roundIndex],
+        height: MATCH_HEIGHT,
+        rows: [
+          teams[0]
+            ? {
+                shortName: teams[0].shortName,
+                seed: teams[0].seed,
+                urlName: teams[0].urlName,
+              }
+            : createPlaceholderTeam(),
+          teams[1]
+            ? {
+                shortName: teams[1].shortName,
+                seed: teams[1].seed,
+                urlName: teams[1].urlName,
+              }
+            : createPlaceholderTeam(),
+        ],
+        highlight: selectedIndexes.length > 0,
+        selectedRowIndexes: selectedIndexes,
+      };
+    });
+  });
+
+  const connectors: ConnectorLayout[] = [];
+
+  for (let roundIndex = 0; roundIndex < cardsByRound.length - 1; roundIndex += 1) {
+    cardsByRound[roundIndex].forEach((card, matchIndex) => {
+      const nextCard = cardsByRound[roundIndex + 1][Math.floor(matchIndex / 2)];
+
+      if (!nextCard) {
+        return;
+      }
+
+      const startX = side === "left" ? card.x + card.width : card.x;
+      const endX = side === "left" ? nextCard.x : nextCard.x + nextCard.width;
+
+      connectors.push(
+        createConnector(
+          `${card.id}_to_${nextCard.id}`,
+          startX,
+          card.y + card.height / 2,
+          endX,
+          nextCard.y + nextCard.height / 2
+        )
+      );
+    });
+  }
+
+  const regionAnchorX = side === "left"
+    ? columnXs[3] + ROUND_WIDTHS[3]
+    : columnXs[3];
+  const eliteEightCard = cardsByRound[3]?.[0];
+
+  return {
+    cards: cardsByRound.flat(),
+    connectors,
+    roundLabelPositions: columnXs.map((columnX, roundIndex) => columnX + ROUND_WIDTHS[roundIndex] / 2),
+    regionAnchor: {
+      x: regionAnchorX,
+      y: eliteEightCard ? eliteEightCard.y + eliteEightCard.height / 2 : originY + REGION_HEIGHT / 2,
+    },
+  };
+}
+
+function MatchCard(props: PositionedCard) {
+  const framePath = buildFramePath(props.width, props.height);
+
+  return (
+    <div
+      className={[
+        "graveyard-bracket__card",
+        props.tone === "path" ? "graveyard-bracket__card--path" : "",
+        props.tone === "center" ? "graveyard-bracket__card--center" : "",
+        props.highlight ? "graveyard-bracket__card--highlight" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      style={{
+        left: `${props.x}px`,
+        top: `${props.y}px`,
+        width: `${props.width}px`,
+        height: `${props.height}px`,
+      }}
+    >
+      <svg className="graveyard-bracket__card-frame" viewBox={`0 0 ${props.width} ${props.height}`} aria-hidden="true">
+        <path className="graveyard-bracket__card-frame-shadow" d={framePath} />
+        <path className="graveyard-bracket__card-frame-stroke" d={framePath} />
+        <path className="graveyard-bracket__card-frame-sketch" d={framePath} />
+      </svg>
+
+      {props.title ? <div className="graveyard-bracket__card-title">{props.title}</div> : null}
+
+      <div className="graveyard-bracket__card-body">
+        {props.rows.map((row, index) => {
+          const logoUrl = row.placeholder ? "" : getLogoUrl(row.urlName);
+          const isPlaceholder = row.placeholder && !row.shortName;
+
+          return (
+            <div
+              key={`${props.id}_${index}`}
+              className={[
+                "graveyard-bracket__row",
+                isPlaceholder ? "graveyard-bracket__row--placeholder" : "",
+                props.selectedRowIndexes.includes(index) ? "graveyard-bracket__row--selected" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+            >
+              <div className="graveyard-bracket__seed">
+                {row.seed ? row.seed.toString().padStart(2, "0") : ""}
+              </div>
+
+              <div className="graveyard-bracket__logo-shell">
+                {logoUrl ? (
+                  <img
+                    className="graveyard-bracket__logo"
+                    src={logoUrl}
+                    alt={`${row.shortName} logo`}
+                    loading="lazy"
+                    onError={(event) => {
+                      event.currentTarget.style.display = "none";
+                    }}
+                  />
+                ) : null}
+              </div>
+
+              <div className="graveyard-bracket__team-name" title={row.shortName}>
+                {row.shortName}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function buildCenterCards() {
+  return [
+    {
+      id: "semifinal_left",
+      x: SEMI_LEFT_X,
+      y: TOP_SEMI_Y,
+      width: SEMI_WIDTH,
+      height: CENTER_CARD_HEIGHT,
+      rows: [createPlaceholderTeam()],
+      title: "Semifinal",
+      highlight: false,
+      selectedRowIndexes: [],
+      tone: "center" as const,
+    },
+    {
+      id: "semifinal_right",
+      x: SEMI_RIGHT_X,
+      y: TOP_SEMI_Y,
+      width: SEMI_WIDTH,
+      height: CENTER_CARD_HEIGHT,
+      rows: [createPlaceholderTeam()],
+      title: "Semifinal",
+      highlight: false,
+      selectedRowIndexes: [],
+      tone: "center" as const,
+    },
+    {
+      id: "championship",
+      x: CHAMP_X,
+      y: CHAMP_Y,
+      width: CHAMP_WIDTH,
+      height: CENTER_CARD_HEIGHT,
+      rows: [createPlaceholderTeam()],
+      title: "National Championship",
+      highlight: false,
+      selectedRowIndexes: [],
+      tone: "center" as const,
+    },
+    {
+      id: "semifinal_left_lower",
+      x: SEMI_LEFT_X,
+      y: BOTTOM_SEMI_Y,
+      width: SEMI_WIDTH,
+      height: CENTER_CARD_HEIGHT,
+      rows: [createPlaceholderTeam()],
+      title: "Semifinal",
+      highlight: false,
+      selectedRowIndexes: [],
+      tone: "center" as const,
+    },
+    {
+      id: "semifinal_right_lower",
+      x: SEMI_RIGHT_X,
+      y: BOTTOM_SEMI_Y,
+      width: SEMI_WIDTH,
+      height: CENTER_CARD_HEIGHT,
+      rows: [createPlaceholderTeam()],
+      title: "Semifinal",
+      highlight: false,
+      selectedRowIndexes: [],
+      tone: "center" as const,
+    },
+  ];
 }
 
 function Bracket(props: BracketProps) {
+  const teamsByRegion = new Map<string, TeamInfo[]>();
+  const stageWrapRef = useRef<HTMLDivElement | null>(null);
+  const regionRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const lastAutoScrolledRegion = useRef<string | null>(null);
+  const dragStateRef = useRef({
+    active: false,
+    pointerId: -1,
+    startX: 0,
+    startY: 0,
+    scrollLeft: 0,
+    scrollTop: 0,
+  });
+  const [copyState, setCopyState] = useState<"idle" | "copied">("idle");
 
-  // Sort teams by regions
-  const region_sorted_teams = new Map<string, TeamInfo[]>();
-  props.all_teams.forEach((item) => {
-    if (!region_sorted_teams.has(item.region)) {
-      region_sorted_teams.set(item.region, []);
+  props.all_teams.forEach((team) => {
+    if (!teamsByRegion.has(team.region)) {
+      teamsByRegion.set(team.region, []);
     }
-    region_sorted_teams.get(item.region)!.push(item);
+    teamsByRegion.get(team.region)!.push(team);
   });
 
-  // Sort match results by regions
-  const region_sorted_match_results = new Map<string, Match[]>();
-  if (props.match_results) {
-    props.match_results.forEach((item) => {
-      if (item.participants[0].region === item.participants[1].region) {
-        if (!region_sorted_match_results.has(item.participants[0].region)) {
-          region_sorted_match_results.set(item.participants[0].region, []);
-        }
-        region_sorted_match_results.get(item.participants[0].region)!.push(item);
-      }
-    })
+  const regionLayouts = REGION_POSITIONS.map((regionConfig) => ({
+    ...regionConfig,
+    teams: teamsByRegion.get(regionConfig.name) ?? [],
+    layout: buildRegionLayout(
+      regionConfig.name,
+      teamsByRegion.get(regionConfig.name) ?? [],
+      regionConfig.side,
+      regionConfig.left,
+      regionConfig.top,
+      props.selected_team
+    ),
+  }));
+
+  const centerCards = buildCenterCards();
+  const centerConnectors: ConnectorLayout[] = [];
+  const centerLookup = new Map(centerCards.map((card) => [card.id, card]));
+
+  const southLayout = regionLayouts.find((region) => region.name === "South")?.layout;
+  const eastLayout = regionLayouts.find((region) => region.name === "East")?.layout;
+  const midwestLayout = regionLayouts.find((region) => region.name === "Midwest")?.layout;
+  const westLayout = regionLayouts.find((region) => region.name === "West")?.layout;
+
+  if (southLayout && eastLayout && midwestLayout && westLayout) {
+    centerConnectors.push(
+      createConnector(
+        "south_to_left_semi",
+        southLayout.regionAnchor.x,
+        southLayout.regionAnchor.y,
+        centerLookup.get("semifinal_left")!.x,
+        centerLookup.get("semifinal_left")!.y + CENTER_CARD_HEIGHT / 2
+      ),
+      createConnector(
+        "east_to_left_lower_semi",
+        eastLayout.regionAnchor.x,
+        eastLayout.regionAnchor.y,
+        centerLookup.get("semifinal_left_lower")!.x,
+        centerLookup.get("semifinal_left_lower")!.y + CENTER_CARD_HEIGHT / 2
+      ),
+      createConnector(
+        "midwest_to_right_semi",
+        midwestLayout.regionAnchor.x,
+        midwestLayout.regionAnchor.y,
+        centerLookup.get("semifinal_right")!.x + SEMI_WIDTH,
+        centerLookup.get("semifinal_right")!.y + CENTER_CARD_HEIGHT / 2
+      ),
+      createConnector(
+        "west_to_right_lower_semi",
+        westLayout.regionAnchor.x,
+        westLayout.regionAnchor.y,
+        centerLookup.get("semifinal_right_lower")!.x + SEMI_WIDTH,
+        centerLookup.get("semifinal_right_lower")!.y + CENTER_CARD_HEIGHT / 2
+      ),
+      createConnector(
+        "left_semi_to_champ",
+        centerLookup.get("semifinal_left")!.x + SEMI_WIDTH,
+        centerLookup.get("semifinal_left")!.y + CENTER_CARD_HEIGHT / 2,
+        centerLookup.get("championship")!.x,
+        centerLookup.get("championship")!.y + CENTER_CARD_HEIGHT / 2
+      ),
+      createConnector(
+        "left_lower_semi_to_champ",
+        centerLookup.get("semifinal_left_lower")!.x + SEMI_WIDTH,
+        centerLookup.get("semifinal_left_lower")!.y + CENTER_CARD_HEIGHT / 2,
+        centerLookup.get("championship")!.x,
+        centerLookup.get("championship")!.y + CENTER_CARD_HEIGHT / 2
+      ),
+      createConnector(
+        "right_semi_to_champ",
+        centerLookup.get("semifinal_right")!.x,
+        centerLookup.get("semifinal_right")!.y + CENTER_CARD_HEIGHT / 2,
+        centerLookup.get("championship")!.x + CHAMP_WIDTH,
+        centerLookup.get("championship")!.y + CENTER_CARD_HEIGHT / 2
+      ),
+      createConnector(
+        "right_lower_semi_to_champ",
+        centerLookup.get("semifinal_right_lower")!.x,
+        centerLookup.get("semifinal_right_lower")!.y + CENTER_CARD_HEIGHT / 2,
+        centerLookup.get("championship")!.x + CHAMP_WIDTH,
+        centerLookup.get("championship")!.y + CENTER_CARD_HEIGHT / 2
+      )
+    );
   }
 
+  useEffect(() => {
+    const selectedRegion = props.selected_team?.region;
+
+    if (!selectedRegion || selectedRegion === "bundle") {
+      return;
+    }
+
+    if (lastAutoScrolledRegion.current !== selectedRegion && regionRefs.current[selectedRegion]) {
+      const stage = regionRefs.current[selectedRegion]?.closest(".graveyard-bracket__stage-wrap");
+      const regionElement = regionRefs.current[selectedRegion];
+
+      if (stage instanceof HTMLElement && regionElement) {
+        stage.scrollTo({
+          behavior: "smooth",
+          left: Math.max(0, regionElement.offsetLeft - 72),
+          top: Math.max(0, regionElement.offsetTop - 96),
+        });
+      }
+
+      lastAutoScrolledRegion.current = selectedRegion;
+    }
+  }, [props.selected_team?.region]);
+
+  useEffect(() => {
+    const stage = stageWrapRef.current;
+
+    if (!stage) {
+      return undefined;
+    }
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (event.pointerType !== "mouse" || event.button !== 0) {
+        return;
+      }
+
+      const target = event.target;
+      if (target instanceof Element && target.closest("button")) {
+        return;
+      }
+
+      dragStateRef.current = {
+        active: true,
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        scrollLeft: stage.scrollLeft,
+        scrollTop: stage.scrollTop,
+      };
+
+      stage.classList.add("graveyard-bracket__stage-wrap--dragging");
+      stage.setPointerCapture(event.pointerId);
+    };
+
+    const handlePointerMove = (event: PointerEvent) => {
+      if (!dragStateRef.current.active || dragStateRef.current.pointerId !== event.pointerId) {
+        return;
+      }
+
+      event.preventDefault();
+      stage.scrollLeft = dragStateRef.current.scrollLeft - (event.clientX - dragStateRef.current.startX);
+      stage.scrollTop = dragStateRef.current.scrollTop - (event.clientY - dragStateRef.current.startY);
+    };
+
+    const endDrag = (event: PointerEvent) => {
+      if (!dragStateRef.current.active || dragStateRef.current.pointerId !== event.pointerId) {
+        return;
+      }
+
+      dragStateRef.current.active = false;
+      stage.classList.remove("graveyard-bracket__stage-wrap--dragging");
+
+      if (stage.hasPointerCapture(event.pointerId)) {
+        stage.releasePointerCapture(event.pointerId);
+      }
+    };
+
+    stage.addEventListener("pointerdown", handlePointerDown);
+    stage.addEventListener("pointermove", handlePointerMove);
+    stage.addEventListener("pointerup", endDrag);
+    stage.addEventListener("pointercancel", endDrag);
+    stage.addEventListener("lostpointercapture", endDrag);
+
+    return () => {
+      stage.removeEventListener("pointerdown", handlePointerDown);
+      stage.removeEventListener("pointermove", handlePointerMove);
+      stage.removeEventListener("pointerup", endDrag);
+      stage.removeEventListener("pointercancel", endDrag);
+      stage.removeEventListener("lostpointercapture", endDrag);
+    };
+  }, []);
+
+  const handleCopyGameCode = async () => {
+    if (!props.gameCode || !navigator.clipboard) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(props.gameCode);
+      setCopyState("copied");
+      window.setTimeout(() => setCopyState("idle"), 1400);
+    } catch (error) {
+      console.error("Unable to copy game code", error);
+    }
+  };
+
   return (
-    <>
-      {/* Display all 4 regional brackets */}
-      <Grid container spacing={0} sx={{ display: "flex", justifyContent: "center", alignItems: "center", flexDirection: "row", overflowY: "auto", maxHeight: "70vh", paddingBottom: 1 }}>
+    <div className="graveyard-bracket">
+      <div className="graveyard-bracket__header">
+        <div className="graveyard-bracket__brand">
+          <div className="graveyard-bracket__brand-main">Bracket</div>
+          <div className="graveyard-bracket__brand-accent">Bloodbath</div>
+        </div>
 
-        <Box sx={{ position: "relative", width: "100%", height: "100%" }}>
-          <img src={imageSrc} alt="Central Game" style={{ position: "absolute", top: "70%", left: "50%", maxWidth: "200px" ,transform: "translate(-50%, 160%)",zIndex: 2 }} />
-        </Box>
+        <div className="graveyard-bracket__meta">
+          <div className="graveyard-bracket__meta-chip">
+            <span className="graveyard-bracket__meta-label">Game Code</span>
+            <span className="graveyard-bracket__meta-value">{props.gameCode || "------"}</span>
+            <button type="button" className="graveyard-bracket__copy-button" onClick={handleCopyGameCode}>
+              {copyState === "copied" ? "Copied" : "Copy"}
+            </button>
+          </div>
 
-        <Box sx={{ position: "relative", width: "100%", height: "100%" }}>
-          <img src={imageSrc} alt="Central Game" style={{ position: "absolute", top: "70%", left: "50%", maxWidth: "200px" ,transform: "translate(-50%, 1100%)",zIndex: 2 }} />
-        </Box>
+          <div className="graveyard-bracket__meta-chip graveyard-bracket__meta-chip--status">
+            <span className="graveyard-bracket__meta-label">Round 1</span>
+            <span className="graveyard-bracket__meta-divider">•</span>
+            <span className="graveyard-bracket__meta-label">Auction</span>
+            <span className="graveyard-bracket__meta-value">
+              {props.auctionNumber ?? 0}/{props.totalAuctions ?? props.all_teams.length}
+            </span>
+          </div>
+        </div>
+      </div>
 
-        {Array.from(region_sorted_teams.entries()).map(([key, val], index) => (
+      <div className="graveyard-bracket__stage-wrap" ref={stageWrapRef}>
+        <div className="graveyard-bracket__canvas">
+          <div className="graveyard-bracket__center-badge graveyard-bracket__center-badge--top">Final Four</div>
+          <div className="graveyard-bracket__center-badge graveyard-bracket__center-badge--bottom">Championship</div>
 
-          <React.Fragment key={key}>
-            {/* Display regional bracket */}
-            <Grid item xs={6}>
-              <Region region_name={key} region_teams={val} reverse={index % 2 === 1} selected_team={props.selected_team} match_results={region_sorted_match_results.size > 0 ? region_sorted_match_results.get(key) : null} />
-            </Grid>
+          <svg className="graveyard-bracket__connectors" viewBox={`0 0 ${CANVAS_WIDTH} ${CANVAS_HEIGHT}`} aria-hidden="true">
+            {regionLayouts.flatMap((region) => region.layout.connectors).concat(centerConnectors).map((connector) => (
+              <g key={connector.id} className="graveyard-bracket__connector-group">
+                <path className="graveyard-bracket__connector-shadow" d={connector.d} />
+                <path className="graveyard-bracket__connector-base" d={connector.d} />
+                <path className="graveyard-bracket__connector-sketch" d={connector.d} />
+                {connector.joints.map((joint, index) => (
+                  <g key={`${connector.id}_${index}`} transform={`translate(${joint.x}, ${joint.y})`} className="graveyard-bracket__joint">
+                    <circle r="3.1" />
+                    <ellipse rx="4.6" ry="2" />
+                  </g>
+                ))}
+              </g>
+            ))}
+          </svg>
 
-            {/* Display the final matches in the middle */}
-            {
-              index === 1 ?
-                <Grid container key={"finals"} sx={{ display: "flex", justifyContent: "center", alignItems: "center", flexDirection: "row" }}>
-                  {/* Spacing */}
-                  <Grid item xs={2}></Grid>
+          {regionLayouts.map((region) => (
+            <div
+              key={region.name}
+              ref={(element) => {
+                regionRefs.current[region.name] = element;
+              }}
+              className={[
+                "graveyard-bracket__region-anchor",
+                props.selected_team?.region === region.name ? "graveyard-bracket__region-anchor--current" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              style={{
+                left: `${region.left}px`,
+                top: `${region.top}px`,
+                width: `${REGION_WIDTH}px`,
+                height: `${REGION_HEIGHT}px`,
+              }}
+            >
+              <div
+                className={[
+                  "graveyard-bracket__region-name",
+                  `graveyard-bracket__region-name--${region.side}`,
+                ].join(" ")}
+                style={{
+                  left: `${region.layout.regionAnchor.x - region.left + (region.side === "left" ? 26 : -126)}px`,
+                  top: `${218}px`,
+                }}
+              >
+                {region.name}
+              </div>
 
-                  {/* West vs Midwest final four match */}
-                  <Grid item xs={2}>
-                    <Grid item sx={{ display: "flex", justifyContent: "center", alignItems: "center", flexDirection: "row" }}>
-                      <Typography variant="body2" justifyContent="center" sx={{ color: "black", fontSize: "10px" }}>
-                        FINAL FOUR
-                      </Typography>
-                    </Grid>
-                    <Grid item sx={{ display: "flex", justifyContent: "center", alignItems: "center", flexDirection: "row" }}>
-                      <Card sx={{ margin: 0.5, padding: 1, border: 1, borderRadius: 0, borderColor: "var(--light-grey-color)", width: "100px" }}>
-                        <Typography variant="body2" justifyContent="center" sx={{ color: "gray", fontSize: "10px" }}> TBD </Typography>
-                        <Divider />
-                        <Typography variant="body2" justifyContent="center" sx={{ color: "gray", fontSize: "10px" }}> TBD </Typography>
-                      </Card>
-                    </Grid>
-                  </Grid>
+              {region.layout.roundLabelPositions.map((labelX, roundIndex) => (
+                <div
+                  key={`${region.name}_${ROUND_LABELS[roundIndex]}`}
+                  className="graveyard-bracket__round-label"
+                  style={{
+                    left: `${labelX - region.left}px`,
+                    top: `${10}px`,
+                  }}
+                >
+                  {ROUND_LABELS[roundIndex]}
+                </div>
+              ))}
+            </div>
+          ))}
 
-                  {/* Final championship match */}
-                  <Grid item xs={2}>
-                    <Grid item sx={{ display: "flex", justifyContent: "center", alignItems: "center", flexDirection: "row" }}>
-                      <Typography variant="body2" justifyContent="center" sx={{ color: "black", fontSize: "10px" }}>
-                        CHAMPIONSHIP
-                      </Typography>
-                    </Grid>
-                    <Grid item sx={{ display: "flex", justifyContent: "center", alignItems: "center", flexDirection: "row" }}>
-                      <Card sx={{ margin: 0.5, padding: 1, border: 1, borderRadius: 0, borderColor: "var(--light-grey-color)", width: "100px" }}>
-                        <Typography variant="body2" justifyContent="center" sx={{ color: "gray", fontSize: "10px" }}> TBD </Typography>
-                        <Divider />
-                        <Typography variant="body2" justifyContent="center" sx={{ color: "gray", fontSize: "10px" }}> TBD </Typography>
-                      </Card>
-                    </Grid>
-                  </Grid>
+          {regionLayouts.flatMap((region) => region.layout.cards).map((card) => (
+            <MatchCard key={card.id} {...card} />
+          ))}
 
-                  {/* East vs South final four match */}
-                  <Grid item xs={2}>
-                    <Grid item sx={{ display: "flex", justifyContent: "center", alignItems: "center", flexDirection: "row" }}>
-                      <Typography variant="body2" justifyContent="center" sx={{ color: "black", fontSize: "10px" }}>
-                        FINAL FOUR
-                      </Typography>
-                    </Grid>
-                    <Grid item sx={{ display: "flex", justifyContent: "center", alignItems: "center", flexDirection: "row" }}>
-                      <Card sx={{ margin: 0.5, padding: 1, border: 1, borderRadius: 0, borderColor: "var(--light-grey-color)", width: "100px" }}>
-                        <Typography variant="body2" justifyContent="center" sx={{ color: "gray", fontSize: "10px" }}> TBD </Typography>
-                        <Divider />
-                        <Typography variant="body2" justifyContent="center" sx={{ color: "gray", fontSize: "10px" }}> TBD </Typography>
-                      </Card>
-                    </Grid>
-                  </Grid>
-
-                  {/* Spacing */}
-                  <Grid item xs={2}></Grid>
-                </Grid>
-                :
-                <></>
-            }
-          </React.Fragment>
-        ))}
-      </Grid>
-    </>
+          {centerCards.map((card) => (
+            <MatchCard key={card.id} {...card} />
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }
 

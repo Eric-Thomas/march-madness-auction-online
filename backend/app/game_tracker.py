@@ -11,18 +11,10 @@ from app.types.types import (
 from app.bracket import get_teams, get_matches
 
 
-def missingPlayInPostProcess(teams: dict[str, TeamInfo]):
-    teams["Xavier/Texas"] = TeamInfo(
-        shortName="Xavier/Texas", urlName="", seed=11, region="Midwest"
-    )
-    return teams
-
-
 class GameTracker:
     def __init__(self, year: int, month: str, day: tuple[str, str]):
         self.games: dict[str, GameInfo] = {}
         self.teams_master = get_teams(year, month, day)
-        missingPlayInPostProcess(self.teams_master)
         teams_list = list(self.teams_master.items())
         teams_list.sort(key=lambda x: int(x[1].seed))
         self.teams_master = {key: value for key, value in teams_list}
