@@ -1,21 +1,20 @@
-import { Typography, List, ListItem, Chip } from "@mui/joy";
-import { Grid, Paper, Card, Fab, Snackbar, Alert } from "@mui/material";
+import { Typography, Chip } from "@mui/joy";
+import { Grid, Paper, Card } from "@mui/material";
 import { useLocation } from "react-router-dom";
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 
-import Bid from "./Bid";
+import AuctionBiddingPanel from "./AuctionBiddingPanel";
 import Bracket from "./Bracket";
-import { PlayerInfo, TeamInfo, BACKEND_WS_URL } from "./Utils"
-import { ReactComponent as CrownIcon } from "./icons/crown.svg";
-import { ReactComponent as UserIcon } from "./icons/user.svg";
+import { PlayerInfo, TeamInfo, BACKEND_WS_URL, normalizeTeamKey } from "./Utils";
 
 import "./css/App.css";
 import "./css/Fonts.css";
+import "./css/GamePage.css";
 
-// Add more specific types for WebSocket messages
 type WebSocketMessage = {
     players?: Map<string, PlayerInfo>;
     bid?: number;
+    current_bidder?: string;
     countdown?: number;
     team?: TeamInfo;
     log?: string;
@@ -23,7 +22,145 @@ type WebSocketMessage = {
     all_teams?: TeamInfo[];
 };
 
-// Extract WebSocket logic to a custom hook
+interface PlayersRailProps {
+    players: Array<[string, PlayerInfo]>;
+    expandedPlayerName: string | null;
+    currentBidder: string;
+    onTogglePlayer: (playerName: string) => void;
+}
+
+function formatCurrency(value?: number) {
+    if (value === undefined || Number.isNaN(value)) {
+        return "--";
+    }
+
+    return `$${Math.max(0, Math.round(value)).toLocaleString()}`;
+}
+
+function getTeamLogoUrl(urlName?: string) {
+    return urlName
+        ? `https://i.turner.ncaa.com/sites/default/files/images/logos/schools/bgl/${urlName}.svg`
+        : "";
+}
+
+function getTeamCountLabel(teamCount: number) {
+    return `${teamCount} TEAM${teamCount === 1 ? "" : "S"}`;
+}
+
+function PlayersRail(props: PlayersRailProps) {
+    return (
+        <aside className="player-rail" aria-label="Players">
+            <div className="player-rail__header">
+                <h2 className="player-rail__title">PLAYERS ({props.players.length})</h2>
+            </div>
+
+            <div className="player-rail__list">
+                {props.players.length > 0 ? (
+                    props.players.map(([playerName, playerInfo], index) => {
+                        const isExpanded = props.expandedPlayerName === playerName;
+                        const isHighestBidder = Boolean(props.currentBidder) && props.currentBidder === playerName;
+                        const teamCount = playerInfo.teams.length;
+
+                        return (
+                            <button
+                                type="button"
+                                key={playerName}
+                                className={[
+                                    "player-rail__card",
+                                    isExpanded ? "player-rail__card--expanded" : "",
+                                    isHighestBidder ? "player-rail__card--leader" : "",
+                                ]
+                                    .filter(Boolean)
+                                    .join(" ")}
+                                onClick={() => props.onTogglePlayer(playerName)}
+                                aria-expanded={isExpanded}
+                            >
+                                <div className="player-rail__card-shell">
+                                    <div className="player-rail__summary">
+                                        <div className="player-rail__identity">
+                                            <div className="player-rail__copy">
+                                                <div className="player-rail__name-line">
+                                                    <span className="player-rail__name">{playerName.toUpperCase()}</span>
+                                                </div>
+
+                                                <div className="player-rail__meta-line">
+                                                    <span
+                                                        className={[
+                                                            "player-rail__balance",
+                                                            playerInfo.balance < 25 ? "player-rail__balance--danger" : "",
+                                                        ]
+                                                            .filter(Boolean)
+                                                            .join(" ")}
+                                                    >
+                                                        {formatCurrency(playerInfo.balance)}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="player-rail__actions">
+                                            <span className="player-rail__badge">{getTeamCountLabel(teamCount)}</span>
+                                            {isHighestBidder ? (
+                                                <span className="player-rail__leader-tag">LEAD</span>
+                                            ) : null}
+                                        </div>
+                                    </div>
+
+                                    <div className="player-rail__details">
+                                        <div className="player-rail__details-inner">
+                                            <div className="player-rail__details-label">Owned Teams</div>
+                                            {teamCount > 0 ? (
+                                                playerInfo.teams.map((team, teamIndex) => {
+                                                    const teamLogoUrl = getTeamLogoUrl(team.urlName);
+
+                                                    return (
+                                                        <div className="player-rail__team-row" key={`${playerName}_${team.shortName}_${teamIndex}`}>
+                                                            <div className="player-rail__team-main">
+                                                                <span className="player-rail__team-logo-shell" aria-hidden="true">
+                                                                    {teamLogoUrl ? (
+                                                                        <img
+                                                                            className="player-rail__team-logo"
+                                                                            src={teamLogoUrl}
+                                                                            alt=""
+                                                                            loading="lazy"
+                                                                            onError={(event) => {
+                                                                                event.currentTarget.style.display = "none";
+                                                                            }}
+                                                                        />
+                                                                    ) : (
+                                                                        <span className="player-rail__team-logo-fallback">{team.shortName.trim().charAt(0).toUpperCase() || "?"}</span>
+                                                                    )}
+                                                                </span>
+
+                                                                <span className="player-rail__team-copy">
+                                                                    <span className="player-rail__team-name">{team.shortName.toUpperCase()}</span>
+                                                                    {team.seed > 0 ? (
+                                                                        <span className="player-rail__team-seed">#{team.seed}</span>
+                                                                    ) : null}
+                                                                </span>
+                                                            </div>
+
+                                                            <span className="player-rail__team-price">{formatCurrency(team.purchasePrice)}</span>
+                                                        </div>
+                                                    );
+                                                })
+                                            ) : (
+                                                <p className="player-rail__empty-copy">No teams owned yet.</p>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </button>
+                        );
+                    })
+                ) : (
+                    <p className="player-rail__empty-copy player-rail__empty-copy--panel">No players yet.</p>
+                )}
+            </div>
+        </aside>
+    );
+}
+
 function useGameWebSocket(gameId: string) {
     const [wsData, setWsData] = useState<WebSocketMessage>({});
     const [error, setError] = useState<string | null>(null);
@@ -32,12 +169,12 @@ function useGameWebSocket(gameId: string) {
         const ws = new WebSocket(`${BACKEND_WS_URL}/ws/${gameId}`);
 
         ws.onerror = (error) => {
-            setError('WebSocket connection error');
-            console.error('WebSocket error:', error);
+            setError("WebSocket connection error");
+            console.error("WebSocket error:", error);
         };
 
         ws.onclose = () => {
-            setError('WebSocket connection closed');
+            setError("WebSocket connection closed");
         };
 
         ws.onmessage = (event) => {
@@ -72,6 +209,9 @@ function useGameWebSocket(gameId: string) {
                     else if ("bid" in data) {
                         setWsData((prev: WebSocketMessage) => ({ ...prev, bid: data["bid"] }));
                     }
+                    else if ("current_bidder" in data) {
+                        setWsData((prev: WebSocketMessage) => ({ ...prev, current_bidder: data["current_bidder"] || "" }));
+                    }
                     else if ("countdown" in data) {
                         setWsData((prev: WebSocketMessage) => ({ ...prev, countdown: data["countdown"] }));
                     }
@@ -90,7 +230,7 @@ function useGameWebSocket(gameId: string) {
                         setWsData((prev: WebSocketMessage) => ({ ...prev, log: data["log"] }));
                     }
                     else if ("remaining" in data && data.remaining) {
-                        const remaining_teams: TeamInfo[] = data.remaining.map((temp_team: { [key: string]: any }, i: number) => {
+                        const remaining_teams: TeamInfo[] = data.remaining.map((temp_team: { [key: string]: any }) => {
                             return {
                                 shortName: temp_team["shortName"],
                                 urlName: temp_team["urlName"],
@@ -101,19 +241,19 @@ function useGameWebSocket(gameId: string) {
                         setWsData((prev: WebSocketMessage) => ({ ...prev, remaining: remaining_teams }));
                     }
                     else if ("all_teams" in data && data.all_teams) {
-                        const all_teams: TeamInfo[] = data.all_teams.map((temp_team: { [key: string]: any }, i: number) => {
+                        const all_teams: TeamInfo[] = data.all_teams.map((temp_team: { [key: string]: any }) => {
                             return {
                                 shortName: temp_team["shortName"],
                                 urlName: temp_team["urlName"],
                                 seed: temp_team["seed"],
                                 region: temp_team["region"]
                             };
-                        })
+                        });
                         setWsData((prev: WebSocketMessage) => ({ ...prev, all_teams }));
                     }
                 } catch (error) {
-                    console.error('Error parsing WebSocket message:', error);
-                    setError('Invalid message format received');
+                    console.error("Error parsing WebSocket message:", error);
+                    setError("Invalid message format received");
                 }
             }
         };
@@ -132,19 +272,15 @@ function GamePage() {
     const { gameId, playerName } = location.state || {};
 
     const [currentHighestBid, setCurrentHighestBid] = useState<number>(0);
+    const [currentBidder, setCurrentBidder] = useState("");
     const [countdown, setCountdown] = useState(10);
     const [playerInfos, setPlayerInfos] = useState<Map<string, PlayerInfo>>(new Map());
     const [team, setTeam] = useState<TeamInfo>({ shortName: "", urlName: "", seed: -1, region: "" });
     const [remainingTeams, setRemainingTeams] = useState<TeamInfo[]>([]);
     const [allTeams, setAllTeams] = useState<TeamInfo[]>([]);
-    const [log, setLog] = useState<string>("");
+    const [expandedPlayerName, setExpandedPlayerName] = useState<string | null>(null);
+    const [copyState, setCopyState] = useState<"idle" | "copied">("idle");
 
-    const [openSnackbar, setOpenSnackbar] = React.useState(false);
-    const handleCloseSnackbar = () => {
-        setOpenSnackbar(false);
-    };
-
-    const baseColor = "#FFD700";
     const panelSurface = {
         backgroundColor: "rgba(9, 12, 17, 0.72)",
         border: 1,
@@ -157,10 +293,10 @@ function GamePage() {
 
     const { wsData, error } = useGameWebSocket(gameId);
 
-    // resets current highest bid when a new team is auctioned
     useEffect(() => {
         if (wsData.team) {
             setCurrentHighestBid(0);
+            setCurrentBidder("");
         }
     }, [wsData.team]);
 
@@ -171,6 +307,9 @@ function GamePage() {
         if (wsData.bid !== undefined) {
             setCurrentHighestBid(wsData.bid);
         }
+        if (wsData.current_bidder !== undefined) {
+            setCurrentBidder(wsData.current_bidder);
+        }
         if (wsData.countdown !== undefined) {
             setCountdown(wsData.countdown);
         }
@@ -178,8 +317,7 @@ function GamePage() {
             setTeam(wsData.team);
         }
         if (wsData.log !== undefined) {
-            setLog(wsData.log);
-            setOpenSnackbar(true);
+            console.log("Auction log:", wsData.log);
         }
         if (wsData.remaining !== undefined) {
             setRemainingTeams(wsData.remaining);
@@ -187,16 +325,43 @@ function GamePage() {
         if (wsData.all_teams !== undefined) {
             setAllTeams(wsData.all_teams);
         }
-    }, [wsData.players, wsData.bid, wsData.countdown, wsData.team, wsData.log, wsData.remaining, wsData.all_teams, error]);
+    }, [wsData.players, wsData.bid, wsData.current_bidder, wsData.countdown, wsData.team, wsData.log, wsData.remaining, wsData.all_teams, error]);
+
+    useEffect(() => {
+        if (expandedPlayerName && !playerInfos.has(expandedPlayerName)) {
+            setExpandedPlayerName(null);
+        }
+    }, [expandedPlayerName, playerInfos]);
 
     const totalAuctions = allTeams.length === 65 ? 64 : allTeams.length;
     const auctionNumber = totalAuctions > 0
         ? Math.min(totalAuctions, Math.max(1, totalAuctions - remainingTeams.length + (team.shortName ? 1 : 0)))
         : 0;
+    const activePlayerBalance = playerName ? (playerInfos.get(playerName)?.balance || 0) : 0;
+    const orderedPlayers = Array.from(playerInfos.entries());
+    const expandedPlayerTeams = expandedPlayerName ? (playerInfos.get(expandedPlayerName)?.teams || []) : [];
+    const highlightedTeamKeys = Array.from(new Set(expandedPlayerTeams.map((ownedTeam) => normalizeTeamKey(ownedTeam)).filter(Boolean)));
+
+    const handleTogglePlayer = (nextPlayerName: string) => {
+        setExpandedPlayerName((currentPlayerName) => currentPlayerName === nextPlayerName ? null : nextPlayerName);
+    };
+
+    const handleCopyGameCode = async () => {
+        if (!gameId || !navigator.clipboard) {
+            return;
+        }
+
+        try {
+            await navigator.clipboard.writeText(gameId);
+            setCopyState("copied");
+            window.setTimeout(() => setCopyState("idle"), 1400);
+        } catch (copyError) {
+            console.error("Unable to copy game code", copyError);
+        }
+    };
 
     return (
         <div id="outer-container" className="game-page-shell">
-            {/* backgroundColor: "rgba(0, 0, 0, 0)" */}
             <Paper
                 elevation={0}
                 sx={{
@@ -208,43 +373,45 @@ function GamePage() {
                     boxShadow: "none"
                 }}
             >
-                <Grid container spacing={2} sx={{ display: "flex", justifyContent: "center", alignItems: "stretch", flexDirection: "row", minHeight: "100%" }}>
-                    <Grid item xs={12} lg={2}>
-                        <Card sx={{ ...panelSurface, minHeight: { xs: 220, lg: 760 }, width: "100%", overflowY: "auto" }}>
-                            <List sx={{ width: "100%" }}>
-                                {playerInfos.size > 0 ?
-                                    Array.from(playerInfos.entries()).map(([player, player_info], i) => {
-                                        const hue = (i * 30) % 360;
-                                        const playerColor = `hsl(${hue}, 70%, 50%)`;
+                <div className="graveyard-bracket__header game-page__top-rail">
+                    <div className="graveyard-bracket__brand">
+                        <div className="graveyard-bracket__brand-main">Bracket</div>
+                        <div className="graveyard-bracket__brand-accent">Bloodbath</div>
+                    </div>
 
-                                        return (
-                                            <React.Fragment key={i}>
-                                                <ListItem>
-                                                    {i === 0 ? <CrownIcon fill={baseColor} width="20px" height="20px" /> : <UserIcon fill={playerColor} width="20px" height="20px" />}
-                                                    <Chip sx={{ padding: "0 20px", backgroundColor: "rgba(255, 255, 255, 0.06)", border: "1px solid rgba(255, 255, 255, 0.08)" }}>
-                                                        <Typography sx={{ color: "#fff1e7", fontFamily: "threeDim", letterSpacing: "0.06em" }}>
-                                                            {player}
-                                                        </Typography>
-                                                        <Typography sx={{ fontSize: "12px", color: "rgba(245, 238, 230, 0.78)" }}>
-                                                            Balance: $ {player_info["balance"].toFixed(2)}
-                                                        </Typography>
-                                                        <Typography sx={{ fontSize: "12px", color: "rgba(245, 238, 230, 0.68)" }}>
-                                                            Teams:
-                                                        </Typography>
-                                                        {player_info["teams"].map((temp_team: TeamInfo, teamIndex: number) => (
-                                                            <Typography key={teamIndex} sx={{ marginLeft: "10px", fontSize: "12px", color: "rgba(245, 238, 230, 0.72)" }}>
-                                                                - {temp_team.shortName} (${temp_team.purchasePrice})
-                                                            </Typography>
-                                                        ))}
-                                                    </Chip>
-                                                </ListItem>
-                                            </React.Fragment>
-                                        );
-                                    })
-                                    : <Typography>No players</Typography>
-                                }
-                            </List>
-                        </Card>
+                    <div className="graveyard-bracket__meta">
+                        <div className="graveyard-bracket__meta-chip">
+                            <span className="graveyard-bracket__meta-label">Game Code</span>
+                            <span className="graveyard-bracket__meta-value">{gameId || "------"}</span>
+                            <button type="button" className="graveyard-bracket__copy-button" onClick={handleCopyGameCode}>
+                                {copyState === "copied" ? "Copied" : "Copy"}
+                            </button>
+                        </div>
+
+                        <div className="graveyard-bracket__meta-chip graveyard-bracket__meta-chip--status">
+                            <span className="graveyard-bracket__meta-label">Round 1</span>
+                            <span className="graveyard-bracket__meta-divider">•</span>
+                            <span className="graveyard-bracket__meta-label">Auction</span>
+                            <span className="graveyard-bracket__meta-value">
+                                {auctionNumber}/{totalAuctions || allTeams.length}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <Grid
+                    container
+                    spacing={2}
+                    className="game-page__board"
+                    sx={{ display: "flex", justifyContent: "center", alignItems: "flex-start", flexDirection: "row", minHeight: "100%" }}
+                >
+                    <Grid item xs={12} lg={2}>
+                        <PlayersRail
+                            players={orderedPlayers}
+                            expandedPlayerName={expandedPlayerName}
+                            currentBidder={currentBidder}
+                            onTogglePlayer={handleTogglePlayer}
+                        />
                     </Grid>
 
                     <Grid item xs={12} lg={8}>
@@ -266,62 +433,11 @@ function GamePage() {
                                         <Bracket
                                             all_teams={allTeams}
                                             selected_team={team}
-                                            gameCode={gameId}
-                                            auctionNumber={auctionNumber}
-                                            totalAuctions={totalAuctions}
+                                            highlightedTeamKeys={highlightedTeamKeys}
                                         />
                                         : <Typography sx={{ color: "white", padding: 2 }}>No teams available</Typography>
                                     }
                                 </Card>
-                            </Grid>
-
-                            <Grid item xs={12} sx={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
-                                <Grid container sx={{ justifyContent: "center", alignItems: "center", margin: 0 }}>
-                                    <Grid item xs={12} md={10} lg={9} sx={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
-                                        <Card sx={{ ...panelSurface, height: "150px", width: "100%", paddingX: 1.5 }}>
-                                            <Grid container sx={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
-                                                <Grid container spacing={1} sx={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
-                                                    <Grid item>
-                                                        <Typography justifyContent="center" sx={{ backgroundImage: "linear-gradient(to bottom,rgb(218, 4, 4) 10%, rgb(175, 2, 2) 40%, rgb(48, 1, 1) 90%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", fontFamily: "doubleFeature", fontSize: "50px", marginTop: "0px", marginBottom: "-10px" }}>
-                                                            {team.shortName}
-                                                        </Typography>
-                                                    </Grid>
-                                                    <Grid item>
-                                                        <Typography justifyContent="center" sx={{ backgroundImage: "linear-gradient(to bottom,rgb(218, 4, 4) 10%, rgb(175, 2, 2) 40%, rgb(48, 1, 1) 90%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", fontFamily: "doubleFeature", fontSize: "40px", marginTop: "-20px", marginBottom: "-20px" }}>
-                                                            {team.seed ? `(${team.seed})` : ""}
-                                                        </Typography>
-                                                    </Grid>
-                                                </Grid>
-                                                <Grid item sx={{ display: "flex", justifyContent: "left", alignItems: "left" }}>
-                                                    <Card sx={{ border: 2, height: "54px", width: "54px", backgroundColor: "rgba(4, 6, 10, 0.95)", borderRadius: "14px", borderColor: "rgba(255, 255, 255, 0.18)" }}>
-                                                        <Typography sx={{ color: countdown <= 5 ? "red" : "white", textAlign: "center", fontFamily: "clock", fontSize: "45px", my: "-10px" }}>
-                                                            {countdown.toString().padStart(2, "0")}
-                                                        </Typography>
-                                                    </Card>
-                                                </Grid>
-
-                                                <Grid item xs={4} sx={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
-                                                    <Grid container sx={{ display: "flex", justifyContent: "center", alignItems: "center", flexDirection: "column" }}>
-                                                        <Grid item sx={{ display: "flex", justifyContent: "left", alignItems: "center" }}>
-                                                            <Typography sx={{ justifyContent: "center", fontSize: "20px", color: "#f7efe4" }}>
-                                                                Current bid: ${currentHighestBid.toFixed(2)}
-                                                            </Typography>
-                                                        </Grid>
-                                                        <Grid sx={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
-                                                            <Bid
-                                                                gameId={gameId}
-                                                                player={playerName}
-                                                                currentHighestBid={currentHighestBid}
-                                                                team={`${team.shortName} (${team.seed})`}
-                                                                balance={playerInfos.get(playerName)?.balance || 0}
-                                                            />
-                                                        </Grid>
-                                                    </Grid>
-                                                </Grid>
-                                            </Grid>
-                                        </Card>
-                                    </Grid>
-                                </Grid>
                             </Grid>
                         </Grid>
                     </Grid>
@@ -331,14 +447,14 @@ function GamePage() {
                             <Grid container spacing={1} sx={{ flexWrap: "wrap", padding: 1 }}>
                                 {remainingTeams.length > 0 ?
                                     remainingTeams.map((temp_team, i) => {
-                                        const teamLogo = temp_team.region !== "region" ? `https://i.turner.ncaa.com/sites/default/files/images/logos/schools/bgl/${temp_team.urlName}.svg` : "";
+                                        const teamLogo = temp_team.region !== "region" ? getTeamLogoUrl(temp_team.urlName) : "";
 
                                         return (
                                             <Grid item key={i} xs="auto">
                                                 <Chip sx={{ backgroundColor: "rgba(255, 255, 255, 0.08)", border: "1px solid rgba(255, 255, 255, 0.06)" }}>
                                                     <Typography sx={{ color: "#f6eee5", fontSize: "12px" }}>
                                                         {temp_team.region !== "region" && teamLogo && (
-                                                            <img src={teamLogo} style={{ width: "10px", height: "10px", paddingRight: 4 }} />
+                                                            <img src={teamLogo} alt="" style={{ width: "10px", height: "10px", paddingRight: 4 }} />
                                                         )}
                                                         {temp_team.shortName} ({temp_team.seed})
                                                     </Typography>
@@ -352,32 +468,20 @@ function GamePage() {
                         </Card>
                     </Grid>
 
-                    {/* Floating button showing number of teams remaining */}
-                    <Grid item xs={12} sx={{ display: "flex", justifyContent: { xs: "center", lg: "right" }, alignItems: "right", marginTop: { xs: 0, lg: "-60px" } }}>
-                        <Fab variant="extended" size="small" sx={{ backgroundColor: "rgba(9, 12, 17, 0.82)", border: "1px solid rgba(255, 255, 255, 0.14)", boxShadow: "0 16px 28px rgba(0,0,0,0.22)" }}>
-                            <Typography justifyContent="center" sx={{ fontSize: "12px", color: "#f7efe4" }}><b>Teams Remaining: {remainingTeams.length}</b></Typography>
-                        </Fab>
-                    </Grid>
-
-                    {/* Display logs on the bottom */}
-                    <Snackbar
-                        open={openSnackbar}
-                        onClose={handleCloseSnackbar}
-                        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-                    >
-                        <Alert
-                            elevation={6}
-                            variant="filled"
-                            onClose={handleCloseSnackbar}
-                            severity="info"
-                        >
-                            {log}
-                        </Alert>
-                    </Snackbar>
                 </Grid>
+
+                <AuctionBiddingPanel
+                    gameId={gameId}
+                    playerName={playerName}
+                    currentHighestBid={currentHighestBid}
+                    currentBidder={currentBidder}
+                    countdown={countdown}
+                    balance={activePlayerBalance}
+                    team={team}
+                />
             </Paper>
         </div>
-    )
+    );
 }
 
 export default GamePage;

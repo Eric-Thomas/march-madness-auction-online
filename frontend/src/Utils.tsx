@@ -35,6 +35,16 @@ export interface Match {
     winner?: string
 }
 
+export function normalizeTeamKey(team: Pick<TeamInfo, "shortName" | "urlName" | "region" | "seed">) {
+    if (team.region === "bundle" && team.seed > 0) {
+        return `bundle:${team.seed}`;
+    }
+
+    return (team.urlName || team.shortName || "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "");
+}
+
 function scoreBracketTeamCandidate(team: TeamInfo) {
     let score = 0;
 

@@ -113,6 +113,7 @@ async def finalize_bid(game_id: str):
         await ws.send_json({"log": purchase_msg})
         await ws.send_json({"team": gameTracker.get_current_team(game_id).model_dump()})
         await ws.send_json({"bid": gameTracker.get_current_bid(game_id)})
+        await ws.send_json({"current_bidder": gameTracker.get_current_bidder(game_id)})
         await ws.send_json({"countdown": gameTracker.get_current_countdown(game_id)})
         await ws.send_json({"players": jsonify_dict(gameTracker.get_all_players(game_id))})
         await ws.send_json({"remaining": jsonify_list(gameTracker.get_remaining_teams(game_id))})
@@ -145,6 +146,7 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str):
             while True:
                 if websocket.application_state == WebSocketState.CONNECTED:
                     await websocket.send_json({"bid": gameTracker.get_current_bid(game_id)})
+                    await websocket.send_json({"current_bidder": gameTracker.get_current_bidder(game_id)})
                 else:
                     break  # Stop sending if the connection is no longer active
                 await asyncio.sleep(10)
@@ -261,6 +263,7 @@ async def bid(bid_model: BidModel):
     if bid_model.gameId in game_connections:
         for ws in game_connections[bid_model.gameId]:
             await ws.send_json({"bid": gameTracker.get_current_bid(bid_model.gameId)})
+            await ws.send_json({"current_bidder": gameTracker.get_current_bidder(bid_model.gameId)})
             await ws.send_json({"log": f"{bid_model.player} bid on {bid_model.team} for ${bid_model.bid:.2f}"})
 
     # Ensure there's no running countdown task or cancel if there is one

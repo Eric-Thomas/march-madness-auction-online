@@ -117,7 +117,7 @@
   position: relative;
   flex: 1;
   overflow: auto;
-  padding: 0 0 8px;
+  padding: 0 0 260px;
   scroll-snap-type: both proximity;
   border-radius: 22px;
   background:
@@ -342,12 +342,11 @@
 .graveyard-bracket__card--highlight .graveyard-bracket__card-frame-stroke {
   fill: rgba(34, 14, 18, 0.97);
   stroke: rgba(255, 103, 78, 1);
-  stroke-width: 2.15;
+  stroke-width: 1.95;
   filter:
-    drop-shadow(0 0 2px rgba(255, 232, 220, 0.98))
-    drop-shadow(0 0 8px rgba(255, 128, 98, 1))
-    drop-shadow(0 0 18px rgba(255, 66, 41, 0.96))
-    drop-shadow(0 0 34px rgba(223, 24, 16, 0.82));
+    drop-shadow(0 0 1px rgba(255, 241, 232, 0.78))
+    drop-shadow(0 0 3px rgba(255, 128, 98, 0.46))
+    drop-shadow(0 0 7px rgba(255, 66, 41, 0.28));
 }
 
 .graveyard-bracket__card--highlight .graveyard-bracket__card-frame-sketch {
@@ -356,14 +355,59 @@
   transform: translate(-0.7px, -0.55px) rotate(-0.2deg);
   filter:
     drop-shadow(0 0 1px rgba(255, 235, 224, 0.32))
-    drop-shadow(0 0 4px rgba(255, 108, 78, 0.24));
+    drop-shadow(0 0 3px rgba(255, 108, 78, 0.2));
 }
 
 .graveyard-bracket__card--highlight .graveyard-bracket__card-frame-shadow {
   fill: rgba(28, 8, 10, 0.74);
   filter:
-    drop-shadow(0 0 8px rgba(255, 90, 70, 0.66))
-    drop-shadow(0 0 22px rgba(184, 18, 12, 0.44));
+    drop-shadow(0 0 3px rgba(255, 90, 70, 0.2))
+    drop-shadow(0 0 7px rgba(184, 18, 12, 0.1));
+}
+
+.graveyard-bracket__card--owner-highlight .graveyard-bracket__card-frame-stroke {
+  fill: rgba(7, 20, 36, 0.97);
+  stroke: rgba(74, 163, 255, 1);
+  stroke-width: 1.9;
+  filter:
+    drop-shadow(0 0 1px rgba(232, 246, 255, 0.62))
+    drop-shadow(0 0 2px rgba(108, 196, 255, 0.24))
+    drop-shadow(0 0 5px rgba(39, 136, 255, 0.12));
+}
+
+.graveyard-bracket__card--owner-highlight .graveyard-bracket__card-frame-sketch {
+  stroke: rgba(232, 247, 255, 0.44);
+  stroke-width: 0.95;
+  transform: translate(-0.7px, -0.55px) rotate(-0.2deg);
+  filter:
+    drop-shadow(0 0 1px rgba(235, 248, 255, 0.3))
+    drop-shadow(0 0 3px rgba(96, 188, 255, 0.2));
+}
+
+.graveyard-bracket__card--owner-highlight .graveyard-bracket__card-frame-shadow {
+  fill: rgba(8, 20, 34, 0.72);
+  filter:
+    drop-shadow(0 0 2px rgba(93, 191, 255, 0.12))
+    drop-shadow(0 0 5px rgba(21, 95, 203, 0.04));
+}
+
+.graveyard-bracket__card--owner-highlight::before,
+.graveyard-bracket__card--owner-highlight::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.graveyard-bracket__card--owner-highlight::before {
+  display: none;
+}
+
+.graveyard-bracket__card--owner-highlight::after {
+  inset: 0;
+  background: none;
+  filter: none;
+  opacity: 0;
 }
 
 .graveyard-bracket__card--highlight::before,
@@ -375,37 +419,36 @@
 }
 
 .graveyard-bracket__card--highlight::before {
-  left: -14px;
-  right: -14px;
-  top: -10px;
-  bottom: -10px;
-  border-radius: 18px;
-  background:
-    radial-gradient(circle at 4% 50%, rgba(255, 101, 69, 0.76) 0 9%, transparent 20%),
-    radial-gradient(circle at 96% 50%, rgba(255, 111, 80, 0.84) 0 11%, transparent 24%),
-    linear-gradient(90deg, rgba(255, 86, 58, 0.24), rgba(255, 68, 45, 0.14));
-  filter: blur(10px);
-  z-index: -1;
-  opacity: 1;
+  display: none;
 }
 
 .graveyard-bracket__card--highlight::after {
-  right: -44px;
+  right: 10px;
   top: 50%;
-  width: 112px;
-  height: 46px;
+  width: 9px;
+  height: 9px;
+  margin-top: -4.5px;
+  border-radius: 50%;
   background:
-    linear-gradient(90deg, rgba(255, 136, 101, 0.98) 0%, rgba(255, 81, 54, 0.92) 22%, rgba(255, 56, 37, 0.48) 52%, rgba(255, 46, 37, 0) 100%),
-    radial-gradient(circle at 12% 50%, rgba(255, 249, 227, 1) 0 6%, rgba(255, 212, 144, 0.98) 7 12%, rgba(255, 113, 71, 0.94) 13 22%, transparent 23%),
-    radial-gradient(circle at 27% 28%, rgba(255, 171, 118, 0.78) 0 5%, transparent 7%),
-    radial-gradient(circle at 30% 72%, rgba(255, 74, 46, 0.72) 0 5%, transparent 7%),
-    radial-gradient(circle at 46% 50%, rgba(193, 14, 10, 0.42) 0 8%, transparent 10%);
+    radial-gradient(circle, rgba(255, 245, 234, 0.96) 0 28%, rgba(255, 128, 87, 0.96) 45%, rgba(255, 65, 45, 0.92) 68%, rgba(255, 65, 45, 0.16) 100%);
   filter:
-    blur(1.1px)
-    drop-shadow(0 0 7px rgba(255, 146, 104, 0.5))
-    drop-shadow(0 0 15px rgba(255, 69, 42, 0.42));
-  transform: translateY(-50%) skewX(-10deg);
-  opacity: 0.98;
+    drop-shadow(0 0 4px rgba(255, 137, 101, 0.56))
+    drop-shadow(0 0 8px rgba(255, 75, 49, 0.28));
+  opacity: 1;
+  animation: graveyard-bracket-live-dot 1.4s ease-in-out infinite;
+}
+
+@keyframes graveyard-bracket-live-dot {
+  0%,
+  100% {
+    transform: translateZ(0) scale(0.92);
+    opacity: 0.82;
+  }
+
+  50% {
+    transform: translateZ(0) scale(1.18);
+    opacity: 1;
+  }
 }
 
 .graveyard-bracket__card--center .graveyard-bracket__card-frame-stroke {
@@ -449,6 +492,18 @@
 .graveyard-bracket__row--selected .graveyard-bracket__team-name {
   color: #fff4eb;
   text-shadow: 0 0 8px rgba(255, 212, 202, 0.8), 0 0 22px rgba(255, 58, 58, 0.48);
+}
+
+.graveyard-bracket__row--owned .graveyard-bracket__seed,
+.graveyard-bracket__row--owned .graveyard-bracket__team-name {
+  color: #7fcaff;
+  text-shadow: 0 0 8px rgba(127, 202, 255, 0.34), 0 0 20px rgba(58, 162, 255, 0.24);
+}
+
+.graveyard-bracket__row--owned .graveyard-bracket__logo {
+  filter:
+    drop-shadow(0 0 8px rgba(74, 163, 255, 0.34))
+    drop-shadow(0 0 16px rgba(74, 163, 255, 0.18));
 }
 
 .graveyard-bracket__row--placeholder {

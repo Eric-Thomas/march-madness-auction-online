@@ -114,6 +114,11 @@ class GameTracker:
     def get_current_bid(self, gameId: str) -> float:
         return self.games[gameId].currentBid
 
+    def get_current_bidder(self, gameId: str) -> str:
+        if self.games[gameId].log:
+            return self.games[gameId].log[-1].player
+        return ""
+
     def get_current_countdown(self, gameId: str) -> float:
         return self.games[gameId].countdown
 

@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef } from "react";
 
-import { GenerateRegionBracketData, Match, TeamInfo } from "./Utils";
+import { GenerateRegionBracketData, Match, TeamInfo, normalizeTeamKey } from "./Utils";
 import "./css/Bracket.css";
 
 interface DisplayTeam {
@@ -19,7 +19,9 @@ interface PositionedCard {
   rows: DisplayTeam[];
   title?: string;
   highlight: boolean;
+  ownerHighlight: boolean;
   selectedRowIndexes: number[];
+  ownedRowIndexes: number[];
   tone?: "match" | "path" | "center";
 }
 
@@ -39,10 +41,8 @@ interface RegionLayout {
 interface BracketProps {
   all_teams: TeamInfo[];
   selected_team?: TeamInfo;
+  highlightedTeamKeys?: string[];
   match_results?: Match[];
-  gameCode?: string;
-  auctionNumber?: number;
-  totalAuctions?: number;
 }
 
 type RegionSide = "left" | "right";
@@ -152,7 +152,28 @@ function getSelectedIndexes(teams: TeamInfo[], selectedTeam?: TeamInfo) {
   }, []);
 }
 
-function buildRegionLayout(regionName: string, regionTeams: TeamInfo[], side: RegionSide, originX: number, originY: number, selectedTeam?: TeamInfo): RegionLayout {
+function getOwnedIndexes(teams: TeamInfo[], highlightedTeamKeys: Set<string>) {
+  return teams.reduce<number[]>((indexes, team, index) => {
+    const normalizedKey = normalizeTeamKey(team);
+    const bundleKey = team.seed > 0 ? `bundle:${team.seed}` : "";
+
+    if ((normalizedKey && highlightedTeamKeys.has(normalizedKey)) || (bundleKey && highlightedTeamKeys.has(bundleKey))) {
+      indexes.push(index);
+    }
+
+    return indexes;
+  }, []);
+}
+
+function buildRegionLayout(
+  regionName: string,
+  regionTeams: TeamInfo[],
+  side: RegionSide,
+  originX: number,
+  originY: number,
+  selectedTeam?: TeamInfo,
+  highlightedTeamKeys: Set<string> = new Set<string>()
+): RegionLayout {
   const rounds = groupMatchesByRound(GenerateRegionBracketData(regionTeams));
   const outerX = side === "left"
     ? originX + REGION_PADDING_X
@@ -172,6 +193,7 @@ function buildRegionLayout(regionName: string, regionTeams: TeamInfo[], side: Re
     return roundMatches.map((match, matchIndex) => {
       const teams = match.participants.filter(Boolean);
       const selectedIndexes = getSelectedIndexes(teams, selectedTeam);
+      const ownedIndexes = getOwnedIndexes(teams, highlightedTeamKeys);
 
       return {
         id: `${regionName}_${roundIndex}_${match.id}`,
@@ -196,7 +218,9 @@ function buildRegionLayout(regionName: string, regionTeams: TeamInfo[], side: Re
             : createPlaceholderTeam(),
         ],
         highlight: selectedIndexes.length > 0,
+        ownerHighlight: ownedIndexes.length > 0 && selectedIndexes.length === 0,
         selectedRowIndexes: selectedIndexes,
+        ownedRowIndexes: ownedIndexes,
       };
     });
   });
@@ -252,6 +276,7 @@ function MatchCard(props: PositionedCard) {
         props.tone === "path" ? "graveyard-bracket__card--path" : "",
         props.tone === "center" ? "graveyard-bracket__card--center" : "",
         props.highlight ? "graveyard-bracket__card--highlight" : "",
+        props.ownerHighlight ? "graveyard-bracket__card--owner-highlight" : "",
       ]
         .filter(Boolean)
         .join(" ")}
@@ -282,6 +307,7 @@ function MatchCard(props: PositionedCard) {
                 "graveyard-bracket__row",
                 isPlaceholder ? "graveyard-bracket__row--placeholder" : "",
                 props.selectedRowIndexes.includes(index) ? "graveyard-bracket__row--selected" : "",
+                props.ownedRowIndexes.includes(index) ? "graveyard-bracket__row--owned" : "",
               ]
                 .filter(Boolean)
                 .join(" ")}
@@ -326,7 +352,9 @@ function buildCenterCards() {
       rows: [createPlaceholderTeam()],
       title: "Semifinal",
       highlight: false,
+      ownerHighlight: false,
       selectedRowIndexes: [],
+      ownedRowIndexes: [],
       tone: "center" as const,
     },
     {
@@ -338,7 +366,9 @@ function buildCenterCards() {
       rows: [createPlaceholderTeam()],
       title: "Semifinal",
       highlight: false,
+      ownerHighlight: false,
       selectedRowIndexes: [],
+      ownedRowIndexes: [],
       tone: "center" as const,
     },
     {
@@ -350,7 +380,9 @@ function buildCenterCards() {
       rows: [createPlaceholderTeam()],
       title: "National Championship",
       highlight: false,
+      ownerHighlight: false,
       selectedRowIndexes: [],
+      ownedRowIndexes: [],
       tone: "center" as const,
     },
     {
@@ -362,7 +394,9 @@ function buildCenterCards() {
       rows: [createPlaceholderTeam()],
       title: "Semifinal",
       highlight: false,
+      ownerHighlight: false,
       selectedRowIndexes: [],
+      ownedRowIndexes: [],
       tone: "center" as const,
     },
     {
@@ -374,7 +408,9 @@ function buildCenterCards() {
       rows: [createPlaceholderTeam()],
       title: "Semifinal",
       highlight: false,
+      ownerHighlight: false,
       selectedRowIndexes: [],
+      ownedRowIndexes: [],
       tone: "center" as const,
     },
   ];
@@ -393,7 +429,7 @@ function Bracket(props: BracketProps) {
     scrollLeft: 0,
     scrollTop: 0,
   });
-  const [copyState, setCopyState] = useState<"idle" | "copied">("idle");
+  const highlightedKeySet = new Set(props.highlightedTeamKeys ?? []);
 
   props.all_teams.forEach((team) => {
     if (!teamsByRegion.has(team.region)) {
@@ -411,7 +447,8 @@ function Bracket(props: BracketProps) {
       regionConfig.side,
       regionConfig.left,
       regionConfig.top,
-      props.selected_team
+      props.selected_team,
+      highlightedKeySet
     ),
   }));
 
@@ -576,48 +613,8 @@ function Bracket(props: BracketProps) {
     };
   }, []);
 
-  const handleCopyGameCode = async () => {
-    if (!props.gameCode || !navigator.clipboard) {
-      return;
-    }
-
-    try {
-      await navigator.clipboard.writeText(props.gameCode);
-      setCopyState("copied");
-      window.setTimeout(() => setCopyState("idle"), 1400);
-    } catch (error) {
-      console.error("Unable to copy game code", error);
-    }
-  };
-
   return (
     <div className="graveyard-bracket">
-      <div className="graveyard-bracket__header">
-        <div className="graveyard-bracket__brand">
-          <div className="graveyard-bracket__brand-main">Bracket</div>
-          <div className="graveyard-bracket__brand-accent">Bloodbath</div>
-        </div>
-
-        <div className="graveyard-bracket__meta">
-          <div className="graveyard-bracket__meta-chip">
-            <span className="graveyard-bracket__meta-label">Game Code</span>
-            <span className="graveyard-bracket__meta-value">{props.gameCode || "------"}</span>
-            <button type="button" className="graveyard-bracket__copy-button" onClick={handleCopyGameCode}>
-              {copyState === "copied" ? "Copied" : "Copy"}
-            </button>
-          </div>
-
-          <div className="graveyard-bracket__meta-chip graveyard-bracket__meta-chip--status">
-            <span className="graveyard-bracket__meta-label">Round 1</span>
-            <span className="graveyard-bracket__meta-divider">•</span>
-            <span className="graveyard-bracket__meta-label">Auction</span>
-            <span className="graveyard-bracket__meta-value">
-              {props.auctionNumber ?? 0}/{props.totalAuctions ?? props.all_teams.length}
-            </span>
-          </div>
-        </div>
-      </div>
-
       <div className="graveyard-bracket__stage-wrap" ref={stageWrapRef}>
         <div className="graveyard-bracket__canvas">
           <div className="graveyard-bracket__center-badge graveyard-bracket__center-badge--top">Final Four</div>

@@ -1,0 +1,33 @@
+- generic [ref=e4]:
+  - generic [ref=e5]:
+    - list [ref=e8]:
+      - paragraph [ref=e9]: No players
+    - paragraph [ref=e14]: No teams available
+    - paragraph [ref=e18]: No teams available
+  - generic [ref=e20]:
+    - generic [ref=e21]:
+      - generic [ref=e22]:
+        - generic [ref=e23]: On the clock
+        - generic [ref=e24]: "10"
+      - generic [ref=e25]: Preparing next team
+    - generic [ref=e26]:
+      - generic [ref=e28]: MM
+      - heading "Waiting for the next team" [level=2] [ref=e31]
+    - generic [ref=e32]:
+      - generic [ref=e33]: Current bid
+      - strong [ref=e34]: $0
+      - generic [ref=e35]: No bids yet
+    - generic [ref=e37]:
+      - generic [ref=e38]:
+        - button "+$1" [disabled] [ref=e39]
+        - button "+$5" [disabled] [ref=e40]
+        - button "+$10" [disabled] [ref=e41]
+        - button "Max" [disabled] [ref=e42]
+      - generic [ref=e43]:
+        - generic [ref=e45]:
+          - generic [ref=e46]: $
+          - textbox "Bid amount for" [disabled] [ref=e47]:
+            - /placeholder: Enter bid
+            - text: "1"
+        - button "Insufficient funds" [disabled] [ref=e48]
+      - generic [ref=e49]: Need $1 · Bankroll $0
