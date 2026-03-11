@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 
 import { GenerateRegionBracketData, Match, TeamInfo, normalizeTeamKey } from "./Utils";
 import "./css/Bracket.css";
@@ -20,7 +20,9 @@ interface PositionedCard {
   title?: string;
   highlight: boolean;
   ownerHighlight: boolean;
+  inspectedTone?: "available" | "sold";
   selectedRowIndexes: number[];
+  inspectedRowIndexes: number[];
   ownedRowIndexes: number[];
   tone?: "match" | "path" | "center";
 }
@@ -42,6 +44,9 @@ interface BracketProps {
   all_teams: TeamInfo[];
   selected_team?: TeamInfo;
   highlightedTeamKeys?: string[];
+  inspectedTeam?: TeamInfo | null;
+  inspectedTeamTone?: "available" | "sold" | null;
+  inspectedBundleSeed?: number | null;
   match_results?: Match[];
 }
 
@@ -124,6 +129,12 @@ function getLogoUrl(urlName?: string) {
     : "";
 }
 
+function normalizeDisplayTeamKey(team: DisplayTeam) {
+  return (team.urlName || team.shortName || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "");
+}
+
 function createPlaceholderTeam(): DisplayTeam {
   return {
     shortName: "",
@@ -131,21 +142,34 @@ function createPlaceholderTeam(): DisplayTeam {
   };
 }
 
-function isSelectedTeam(team: TeamInfo, selectedTeam?: TeamInfo) {
-  if (!selectedTeam) {
+function matchesFocusedTeam(team: TeamInfo, focusedTeam?: TeamInfo | null) {
+  if (!focusedTeam) {
     return false;
   }
 
-  if (selectedTeam.region === "bundle") {
-    return team.seed === selectedTeam.seed;
+  if (focusedTeam.region === "bundle") {
+    return team.seed === focusedTeam.seed;
   }
 
-  return team.shortName === selectedTeam.shortName;
+  return team.shortName === focusedTeam.shortName;
 }
 
-function getSelectedIndexes(teams: TeamInfo[], selectedTeam?: TeamInfo) {
+function getFocusedIndexes(teams: TeamInfo[], focusedTeam?: TeamInfo | null) {
   return teams.reduce<number[]>((indexes, team, index) => {
-    if (isSelectedTeam(team, selectedTeam)) {
+    if (matchesFocusedTeam(team, focusedTeam)) {
+      indexes.push(index);
+    }
+    return indexes;
+  }, []);
+}
+
+function getBundleFocusedIndexes(teams: TeamInfo[], bundleSeed?: number | null) {
+  if (!bundleSeed) {
+    return [];
+  }
+
+  return teams.reduce<number[]>((indexes, team, index) => {
+    if (team.seed === bundleSeed) {
       indexes.push(index);
     }
     return indexes;
@@ -172,6 +196,9 @@ function buildRegionLayout(
   originX: number,
   originY: number,
   selectedTeam?: TeamInfo,
+  inspectedTeam?: TeamInfo | null,
+  inspectedTeamTone?: "available" | "sold" | null,
+  inspectedBundleSeed?: number | null,
   highlightedTeamKeys: Set<string> = new Set<string>()
 ): RegionLayout {
   const rounds = groupMatchesByRound(GenerateRegionBracketData(regionTeams));
@@ -192,7 +219,12 @@ function buildRegionLayout(
 
     return roundMatches.map((match, matchIndex) => {
       const teams = match.participants.filter(Boolean);
-      const selectedIndexes = getSelectedIndexes(teams, selectedTeam);
+      const selectedIndexes = getFocusedIndexes(teams, selectedTeam);
+      const inspectedIndexes = inspectedBundleSeed
+        ? getBundleFocusedIndexes(teams, inspectedBundleSeed)
+        : getFocusedIndexes(teams, inspectedTeam);
+      const hasSelectedRows = selectedIndexes.length > 0;
+      const hasInspectedRows = inspectedIndexes.length > 0 && !hasSelectedRows;
       const ownedIndexes = getOwnedIndexes(teams, highlightedTeamKeys);
 
       return {
@@ -217,9 +249,11 @@ function buildRegionLayout(
               }
             : createPlaceholderTeam(),
         ],
-        highlight: selectedIndexes.length > 0,
-        ownerHighlight: ownedIndexes.length > 0 && selectedIndexes.length === 0,
+        highlight: hasSelectedRows,
+        ownerHighlight: ownedIndexes.length > 0 && !hasSelectedRows && !hasInspectedRows,
+        inspectedTone: hasInspectedRows ? inspectedTeamTone || undefined : undefined,
         selectedRowIndexes: selectedIndexes,
+        inspectedRowIndexes: hasInspectedRows ? inspectedIndexes : [],
         ownedRowIndexes: ownedIndexes,
       };
     });
@@ -276,6 +310,8 @@ function MatchCard(props: PositionedCard) {
         props.tone === "path" ? "graveyard-bracket__card--path" : "",
         props.tone === "center" ? "graveyard-bracket__card--center" : "",
         props.highlight ? "graveyard-bracket__card--highlight" : "",
+        props.inspectedTone === "available" ? "graveyard-bracket__card--inspected-available" : "",
+        props.inspectedTone === "sold" ? "graveyard-bracket__card--inspected-sold" : "",
         props.ownerHighlight ? "graveyard-bracket__card--owner-highlight" : "",
       ]
         .filter(Boolean)
@@ -299,6 +335,10 @@ function MatchCard(props: PositionedCard) {
         {props.rows.map((row, index) => {
           const logoUrl = row.placeholder ? "" : getLogoUrl(row.urlName);
           const isPlaceholder = row.placeholder && !row.shortName;
+          const isSelectedRow = props.selectedRowIndexes.includes(index);
+          const isInspectedAvailableRow = props.inspectedTone === "available" && props.inspectedRowIndexes.includes(index);
+          const isInspectedSoldRow = props.inspectedTone === "sold" && props.inspectedRowIndexes.includes(index);
+          const isOwnedRow = props.ownedRowIndexes.includes(index) && !isSelectedRow && !isInspectedAvailableRow && !isInspectedSoldRow;
 
           return (
             <div
@@ -306,8 +346,10 @@ function MatchCard(props: PositionedCard) {
               className={[
                 "graveyard-bracket__row",
                 isPlaceholder ? "graveyard-bracket__row--placeholder" : "",
-                props.selectedRowIndexes.includes(index) ? "graveyard-bracket__row--selected" : "",
-                props.ownedRowIndexes.includes(index) ? "graveyard-bracket__row--owned" : "",
+                isSelectedRow ? "graveyard-bracket__row--selected" : "",
+                isInspectedAvailableRow ? "graveyard-bracket__row--inspected-available" : "",
+                isInspectedSoldRow ? "graveyard-bracket__row--inspected-sold" : "",
+                isOwnedRow ? "graveyard-bracket__row--owned" : "",
               ]
                 .filter(Boolean)
                 .join(" ")}
@@ -353,7 +395,9 @@ function buildCenterCards() {
       title: "Semifinal",
       highlight: false,
       ownerHighlight: false,
+      inspectedTone: undefined,
       selectedRowIndexes: [],
+      inspectedRowIndexes: [],
       ownedRowIndexes: [],
       tone: "center" as const,
     },
@@ -367,7 +411,9 @@ function buildCenterCards() {
       title: "Semifinal",
       highlight: false,
       ownerHighlight: false,
+      inspectedTone: undefined,
       selectedRowIndexes: [],
+      inspectedRowIndexes: [],
       ownedRowIndexes: [],
       tone: "center" as const,
     },
@@ -381,7 +427,9 @@ function buildCenterCards() {
       title: "National Championship",
       highlight: false,
       ownerHighlight: false,
+      inspectedTone: undefined,
       selectedRowIndexes: [],
+      inspectedRowIndexes: [],
       ownedRowIndexes: [],
       tone: "center" as const,
     },
@@ -395,7 +443,9 @@ function buildCenterCards() {
       title: "Semifinal",
       highlight: false,
       ownerHighlight: false,
+      inspectedTone: undefined,
       selectedRowIndexes: [],
+      inspectedRowIndexes: [],
       ownedRowIndexes: [],
       tone: "center" as const,
     },
@@ -409,7 +459,9 @@ function buildCenterCards() {
       title: "Semifinal",
       highlight: false,
       ownerHighlight: false,
+      inspectedTone: undefined,
       selectedRowIndexes: [],
+      inspectedRowIndexes: [],
       ownedRowIndexes: [],
       tone: "center" as const,
     },
@@ -421,6 +473,7 @@ function Bracket(props: BracketProps) {
   const stageWrapRef = useRef<HTMLDivElement | null>(null);
   const regionRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const lastAutoScrolledRegion = useRef<string | null>(null);
+  const lastAutoFocusKey = useRef<string | null>(null);
   const dragStateRef = useRef({
     active: false,
     pointerId: -1,
@@ -448,9 +501,56 @@ function Bracket(props: BracketProps) {
       regionConfig.left,
       regionConfig.top,
       props.selected_team,
+      props.inspectedTeam,
+      props.inspectedTeamTone,
+      props.inspectedBundleSeed,
       highlightedKeySet
     ),
   }));
+  const focusTargets = useMemo(() => {
+    const teamsByFocusRegion = new Map<string, TeamInfo[]>();
+    const nextTargets = new Map<string, { left: number; top: number; width: number; height: number }>();
+
+    props.all_teams.forEach((team) => {
+      if (!teamsByFocusRegion.has(team.region)) {
+        teamsByFocusRegion.set(team.region, []);
+      }
+      teamsByFocusRegion.get(team.region)!.push(team);
+    });
+
+    REGION_POSITIONS.forEach((regionConfig) => {
+      const layout = buildRegionLayout(
+        regionConfig.name,
+        teamsByFocusRegion.get(regionConfig.name) ?? [],
+        regionConfig.side,
+        regionConfig.left,
+        regionConfig.top,
+      );
+
+      layout.cards.forEach((card) => {
+        card.rows.forEach((row, index) => {
+          if (row.placeholder || !row.shortName) {
+            return;
+          }
+
+          const focusKey = normalizeDisplayTeamKey(row);
+          if (!focusKey || nextTargets.has(focusKey)) {
+            return;
+          }
+
+          const rowCenterOffset = index === 0 ? 18 : 43;
+          nextTargets.set(focusKey, {
+            left: card.x,
+            top: card.y + rowCenterOffset,
+            width: card.width,
+            height: card.height,
+          });
+        });
+      });
+    });
+
+    return nextTargets;
+  }, [props.all_teams]);
 
   const centerCards = buildCenterCards();
   const centerConnectors: ConnectorLayout[] = [];
@@ -523,6 +623,10 @@ function Bracket(props: BracketProps) {
   }
 
   useEffect(() => {
+    if (props.inspectedTeam) {
+      return;
+    }
+
     const selectedRegion = props.selected_team?.region;
 
     if (!selectedRegion || selectedRegion === "bundle") {
@@ -543,7 +647,61 @@ function Bracket(props: BracketProps) {
 
       lastAutoScrolledRegion.current = selectedRegion;
     }
-  }, [props.selected_team?.region]);
+  }, [props.inspectedTeam, props.selected_team?.region]);
+
+  useEffect(() => {
+    const stage = stageWrapRef.current;
+
+    if (!stage || !props.inspectedTeam) {
+      return;
+    }
+
+    const focusKey = props.inspectedTeam.region === "bundle" && props.inspectedTeam.seed > 0
+      ? `bundle:${props.inspectedTeam.seed}`
+      : normalizeTeamKey(props.inspectedTeam);
+
+    if (!focusKey || lastAutoFocusKey.current === focusKey) {
+      return;
+    }
+
+    if (props.inspectedTeam.region === "bundle") {
+      const overviewLeft = Math.max(0, CANVAS_WIDTH / 2 - stage.clientWidth / 2);
+      const overviewTop = Math.max(0, CANVAS_HEIGHT / 2 - stage.clientHeight / 2 - 120);
+
+      stage.scrollTo({
+        behavior: "smooth",
+        left: overviewLeft,
+        top: overviewTop,
+      });
+      lastAutoFocusKey.current = focusKey;
+      return;
+    }
+
+    const focusTarget = focusTargets.get(focusKey);
+
+    if (!focusTarget) {
+      return;
+    }
+
+    stage.scrollTo({
+      behavior: "smooth",
+      left: Math.max(0, focusTarget.left - stage.clientWidth / 2 + focusTarget.width / 2),
+      top: Math.max(0, focusTarget.top - stage.clientHeight / 2 + focusTarget.height / 2),
+    });
+    lastAutoFocusKey.current = focusKey;
+  }, [
+    focusTargets,
+    props.inspectedTeam,
+    props.inspectedTeam?.region,
+    props.inspectedTeam?.seed,
+    props.inspectedTeam?.shortName,
+  ]);
+
+  useEffect(() => {
+    if (!props.inspectedTeam) {
+      lastAutoFocusKey.current = null;
+    }
+  }, [props.inspectedTeam]);
 
   useEffect(() => {
     const stage = stageWrapRef.current;

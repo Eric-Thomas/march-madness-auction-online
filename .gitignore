@@ -4,5 +4,5 @@ __pycache__/
 venv
 *.pkl
 *log.md
+frontend_changelog.md
 AGENTS.md
-

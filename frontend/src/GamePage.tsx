@@ -1,7 +1,7 @@
-import { Typography, Chip } from "@mui/joy";
+import { Typography } from "@mui/joy";
 import { Grid, Paper, Card } from "@mui/material";
 import { useLocation } from "react-router-dom";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 
 import AuctionBiddingPanel from "./AuctionBiddingPanel";
 import Bracket from "./Bracket";
@@ -22,12 +22,50 @@ type WebSocketMessage = {
     all_teams?: TeamInfo[];
 };
 
+type AvailabilityFilter = "all" | "available" | "sold";
+type TeamRailStatus = "live" | "available" | "sold";
+type InspectedTeamTone = "available" | "sold";
+
+type TeamRailEntry = {
+    key: string;
+    team: TeamInfo;
+    status: TeamRailStatus;
+    ownerName?: string;
+    purchasePrice?: number;
+    bundleSeed?: number;
+    displayName: string;
+    regionLabel: string;
+    searchText: string;
+};
+
 interface PlayersRailProps {
     players: Array<[string, PlayerInfo]>;
     expandedPlayerName: string | null;
     currentBidder: string;
     onTogglePlayer: (playerName: string) => void;
 }
+
+interface TeamsRailProps {
+    entries: TeamRailEntry[];
+    currentTeam: TeamInfo;
+    availabilityFilter: AvailabilityFilter;
+    searchQuery: string;
+    openSections: string[];
+    inspectedTeamKey: string;
+    expandedSoldTeamKey: string | null;
+    onAvailabilityChange: (nextFilter: AvailabilityFilter) => void;
+    onSearchChange: (nextQuery: string) => void;
+    onToggleSection: (sectionId: string) => void;
+    onInspectTeam: (entry: TeamRailEntry) => void;
+}
+
+const AVAILABILITY_FILTER_OPTIONS: Array<{ value: AvailabilityFilter; label: string }> = [
+    { value: "all", label: "All" },
+    { value: "available", label: "Open" },
+    { value: "sold", label: "Sold" },
+];
+
+const REGION_SECTION_ORDER = ["South", "East", "Midwest", "West"] as const;
 
 function formatCurrency(value?: number) {
     if (value === undefined || Number.isNaN(value)) {
@@ -47,6 +85,88 @@ function getTeamCountLabel(teamCount: number) {
     return `${teamCount} TEAM${teamCount === 1 ? "" : "S"}`;
 }
 
+function isSeedBundleTeam(team?: Pick<TeamInfo, "region" | "seed"> | null) {
+    if (!team) {
+        return false;
+    }
+
+    return team.region === "bundle" && (team.seed === 15 || team.seed === 16);
+}
+
+function getTeamDisplayName(team: Pick<TeamInfo, "shortName" | "region" | "seed">) {
+    return isSeedBundleTeam(team)
+        ? `${team.seed}-SEED BUNDLE`
+        : team.shortName.toUpperCase();
+}
+
+function getTeamRegionLabel(team: Pick<TeamInfo, "region">) {
+    return team.region && team.region !== "bundle"
+        ? `${team.region.toUpperCase()} REGION`
+        : "SEED BUNDLE";
+}
+
+function cloneTeamInfo(team: TeamInfo): TeamInfo {
+    return {
+        shortName: team.shortName,
+        urlName: team.urlName,
+        seed: team.seed,
+        region: team.region,
+        purchasePrice: team.purchasePrice,
+        points: team.points,
+    };
+}
+
+function buildTeamRailEntry(
+    team: TeamInfo,
+    status: TeamRailStatus,
+    options?: {
+        ownerName?: string;
+        purchasePrice?: number;
+        bundleSeed?: number;
+    }
+): TeamRailEntry {
+    const entryTeam = cloneTeamInfo(team);
+    const key = normalizeTeamKey(entryTeam);
+    const displayName = getTeamDisplayName(entryTeam);
+    const regionLabel = getTeamRegionLabel(entryTeam);
+    const searchTokens = [
+        displayName,
+        entryTeam.shortName,
+        entryTeam.region,
+        options?.ownerName || "",
+        entryTeam.seed > 0 ? `#${entryTeam.seed}` : "",
+        options?.bundleSeed ? `${options.bundleSeed} seed bundle` : "",
+    ];
+
+    return {
+        key,
+        team: entryTeam,
+        status,
+        ownerName: options?.ownerName,
+        purchasePrice: options?.purchasePrice,
+        bundleSeed: options?.bundleSeed,
+        displayName,
+        regionLabel,
+        searchText: searchTokens.join(" ").toLowerCase(),
+    };
+}
+
+function sortTeamRailEntries(left: TeamRailEntry, right: TeamRailEntry) {
+    if (left.team.seed !== right.team.seed) {
+        return left.team.seed - right.team.seed;
+    }
+
+    return left.displayName.localeCompare(right.displayName);
+}
+
+function shouldUseTapSoldCardReveal() {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+        return false;
+    }
+
+    return window.matchMedia("(hover: none), (pointer: coarse)").matches;
+}
+
 function PlayersRail(props: PlayersRailProps) {
     return (
         <aside className="player-rail" aria-label="Players">
@@ -56,7 +176,7 @@ function PlayersRail(props: PlayersRailProps) {
 
             <div className="player-rail__list">
                 {props.players.length > 0 ? (
-                    props.players.map(([playerName, playerInfo], index) => {
+                    props.players.map(([playerName, playerInfo]) => {
                         const isExpanded = props.expandedPlayerName === playerName;
                         const isHighestBidder = Boolean(props.currentBidder) && props.currentBidder === playerName;
                         const teamCount = playerInfo.teams.length;
@@ -110,11 +230,11 @@ function PlayersRail(props: PlayersRailProps) {
                                         <div className="player-rail__details-inner">
                                             <div className="player-rail__details-label">Owned Teams</div>
                                             {teamCount > 0 ? (
-                                                playerInfo.teams.map((team, teamIndex) => {
-                                                    const teamLogoUrl = getTeamLogoUrl(team.urlName);
+                                                playerInfo.teams.map((ownedTeam, teamIndex) => {
+                                                    const teamLogoUrl = getTeamLogoUrl(ownedTeam.urlName);
 
                                                     return (
-                                                        <div className="player-rail__team-row" key={`${playerName}_${team.shortName}_${teamIndex}`}>
+                                                        <div className="player-rail__team-row" key={`${playerName}_${ownedTeam.shortName}_${teamIndex}`}>
                                                             <div className="player-rail__team-main">
                                                                 <span className="player-rail__team-logo-shell" aria-hidden="true">
                                                                     {teamLogoUrl ? (
@@ -128,19 +248,19 @@ function PlayersRail(props: PlayersRailProps) {
                                                                             }}
                                                                         />
                                                                     ) : (
-                                                                        <span className="player-rail__team-logo-fallback">{team.shortName.trim().charAt(0).toUpperCase() || "?"}</span>
+                                                                        <span className="player-rail__team-logo-fallback">{ownedTeam.shortName.trim().charAt(0).toUpperCase() || "?"}</span>
                                                                     )}
                                                                 </span>
 
                                                                 <span className="player-rail__team-copy">
-                                                                    <span className="player-rail__team-name">{team.shortName.toUpperCase()}</span>
-                                                                    {team.seed > 0 ? (
-                                                                        <span className="player-rail__team-seed">#{team.seed}</span>
+                                                                    <span className="player-rail__team-name">{ownedTeam.shortName.toUpperCase()}</span>
+                                                                    {ownedTeam.seed > 0 ? (
+                                                                        <span className="player-rail__team-seed">#{ownedTeam.seed}</span>
                                                                     ) : null}
                                                                 </span>
                                                             </div>
 
-                                                            <span className="player-rail__team-price">{formatCurrency(team.purchasePrice)}</span>
+                                                            <span className="player-rail__team-price">{formatCurrency(ownedTeam.purchasePrice)}</span>
                                                         </div>
                                                     );
                                                 })
@@ -161,6 +281,330 @@ function PlayersRail(props: PlayersRailProps) {
     );
 }
 
+function TeamsRail(props: TeamsRailProps) {
+    const stickyRef = useRef<HTMLDivElement | null>(null);
+    const [stickyOffset, setStickyOffset] = useState(0);
+
+    useEffect(() => {
+        const stickyNode = stickyRef.current;
+        if (!stickyNode) {
+            return;
+        }
+
+        const updateStickyOffset = () => {
+            setStickyOffset(stickyNode.offsetHeight);
+        };
+
+        updateStickyOffset();
+
+        if (typeof ResizeObserver === "undefined") {
+            window.addEventListener("resize", updateStickyOffset);
+            return () => window.removeEventListener("resize", updateStickyOffset);
+        }
+
+        const observer = new ResizeObserver(() => updateStickyOffset());
+        observer.observe(stickyNode);
+
+        return () => observer.disconnect();
+    }, [props.currentTeam, props.availabilityFilter, props.searchQuery]);
+
+    const totals = props.entries.reduce(
+        (summary, entry) => {
+            summary.total += 1;
+            if (entry.status === "sold") {
+                summary.sold += 1;
+            } else {
+                summary.available += 1;
+            }
+            return summary;
+        },
+        { total: 0, available: 0, sold: 0 }
+    );
+
+    const normalizedQuery = props.searchQuery.trim().toLowerCase();
+    const filteredEntries = props.entries.filter((entry) => {
+        if (props.availabilityFilter === "available" && entry.status === "sold") {
+            return false;
+        }
+
+        if (props.availabilityFilter === "sold" && entry.status !== "sold") {
+            return false;
+        }
+
+        if (normalizedQuery && !entry.searchText.includes(normalizedQuery)) {
+            return false;
+        }
+
+        return true;
+    });
+
+    const liveSpotlightEntry = (() => {
+        if (!props.currentTeam.shortName) {
+            return null;
+        }
+
+        if (isSeedBundleTeam(props.currentTeam)) {
+            return props.entries.find((entry) => entry.status === "live" && entry.bundleSeed === props.currentTeam.seed) || null;
+        }
+
+        const currentTeamKey = normalizeTeamKey(props.currentTeam);
+        return props.entries.find((entry) => entry.key === currentTeamKey) || null;
+    })();
+    const regionSections = REGION_SECTION_ORDER.map((region) => ({
+        id: region,
+        title: region,
+        entries: filteredEntries
+            .filter((entry) => entry.team.region === region)
+            .sort(sortTeamRailEntries),
+    }));
+    const hasSearch = Boolean(normalizedQuery);
+    const hasMatchingEntries = regionSections.some((section) => section.entries.length > 0);
+    const filterCounts: Record<AvailabilityFilter, number> = {
+        all: totals.total,
+        available: totals.available,
+        sold: totals.sold,
+    };
+
+    const sectionIsExpanded = (sectionId: string, count: number) => {
+        if (count === 0) {
+            return false;
+        }
+
+        return hasSearch || props.openSections.includes(sectionId);
+    };
+
+    return (
+        <aside
+            className="team-rail"
+            aria-label="Teams"
+            style={{ "--team-rail-sticky-offset": `${stickyOffset}px` } as React.CSSProperties}
+        >
+            <div className="team-rail__sticky" ref={stickyRef}>
+                <div className="team-rail__header">
+                    <div className="team-rail__title-row">
+                        <h2 className="team-rail__title">TEAMS ({totals.total})</h2>
+                    </div>
+                </div>
+
+                <div className="team-rail__search-shell">
+                    <label className="team-rail__search-label" htmlFor="team-rail-search">
+                        Search Teams
+                    </label>
+                    <div className="team-rail__search-input-shell">
+                        <input
+                            id="team-rail-search"
+                            type="search"
+                            className="team-rail__search-input"
+                            placeholder="Team, owner, seed bundle"
+                            value={props.searchQuery}
+                            onChange={(event) => props.onSearchChange(event.currentTarget.value)}
+                        />
+
+                        {props.searchQuery ? (
+                            <button
+                                type="button"
+                                className="team-rail__search-clear"
+                                onClick={() => props.onSearchChange("")}
+                            >
+                                Clear
+                            </button>
+                        ) : null}
+                    </div>
+                </div>
+
+                <div className="team-rail__spotlight-shell">
+                    {props.currentTeam.shortName ? (
+                        <button
+                            type="button"
+                            className={[
+                                "team-rail__spotlight",
+                                liveSpotlightEntry && props.inspectedTeamKey === liveSpotlightEntry.key ? "team-rail__spotlight--inspected" : "",
+                            ]
+                                .filter(Boolean)
+                                .join(" ")}
+                            onClick={() => {
+                                if (liveSpotlightEntry) {
+                                    props.onInspectTeam(liveSpotlightEntry);
+                                }
+                            }}
+                        >
+                            <div className="team-rail__spotlight-topline">
+                                <span className="team-rail__spotlight-tag">On The Block</span>
+                                <span className="team-rail__spotlight-region">{getTeamRegionLabel(props.currentTeam)}</span>
+                            </div>
+
+                            <div className="team-rail__spotlight-main">
+                                <span className="team-rail__team-logo-shell team-rail__team-logo-shell--spotlight" aria-hidden="true">
+                                    {!isSeedBundleTeam(props.currentTeam) && getTeamLogoUrl(props.currentTeam.urlName) ? (
+                                        <img
+                                            className="team-rail__team-logo"
+                                            src={getTeamLogoUrl(props.currentTeam.urlName)}
+                                            alt=""
+                                            loading="lazy"
+                                            onError={(event) => {
+                                                event.currentTarget.style.display = "none";
+                                            }}
+                                        />
+                                    ) : (
+                                        <span className="team-rail__team-logo-fallback">{isSeedBundleTeam(props.currentTeam) ? `${props.currentTeam.seed}` : props.currentTeam.shortName.trim().charAt(0).toUpperCase() || "?"}</span>
+                                    )}
+                                </span>
+
+                                <span className="team-rail__spotlight-copy">
+                                    <span className="team-rail__spotlight-name">{getTeamDisplayName(props.currentTeam)}</span>
+                                    {props.currentTeam.seed > 0 ? (
+                                        <span className="team-rail__spotlight-seed">
+                                            {isSeedBundleTeam(props.currentTeam)
+                                                ? `Click any ${props.currentTeam.seed}-seed to follow the bundle`
+                                                : `#${props.currentTeam.seed}`}
+                                        </span>
+                                    ) : null}
+                                </span>
+                            </div>
+                        </button>
+                    ) : (
+                        <div className="team-rail__spotlight team-rail__spotlight--idle">
+                            <span className="team-rail__spotlight-tag">On The Block</span>
+                            <span className="team-rail__spotlight-empty">Awaiting the next team.</span>
+                        </div>
+                    )}
+                </div>
+
+                <div className="team-rail__controls">
+                    <div className="team-rail__filter-row" role="tablist" aria-label="Availability">
+                        {AVAILABILITY_FILTER_OPTIONS.map((option) => (
+                            <button
+                                type="button"
+                                key={option.value}
+                                className={[
+                                    "team-rail__filter-button",
+                                    props.availabilityFilter === option.value ? "team-rail__filter-button--active" : "",
+                                ]
+                                    .filter(Boolean)
+                                    .join(" ")}
+                                onClick={() => props.onAvailabilityChange(option.value)}
+                                aria-pressed={props.availabilityFilter === option.value}
+                            >
+                                <span>{option.label}</span>
+                                <span className="team-rail__filter-count">{filterCounts[option.value]}</span>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            </div>
+
+            <div className="team-rail__sections">
+                {regionSections.map((section) => {
+                    if (section.entries.length === 0) {
+                        return null;
+                    }
+
+                    const isExpanded = sectionIsExpanded(section.id, section.entries.length);
+
+                    return (
+                        <section className="team-rail__section" key={section.id}>
+                            <button
+                                type="button"
+                                className={[
+                                    "team-rail__section-toggle",
+                                    isExpanded && !hasSearch ? "team-rail__section-toggle--expanded" : "",
+                                ]
+                                    .filter(Boolean)
+                                    .join(" ")}
+                                onClick={() => props.onToggleSection(section.id)}
+                                aria-expanded={isExpanded}
+                            >
+                                <span className="team-rail__section-copy">
+                                    <span className="team-rail__section-title">{section.title}</span>
+                                    <span className="team-rail__section-count">{section.entries.length}</span>
+                                </span>
+
+                                <span className="team-rail__section-caret">{isExpanded ? "−" : "+"}</span>
+                            </button>
+
+                            {isExpanded ? (
+                                <div className="team-rail__section-grid">
+                                    {section.entries.map((entry) => {
+                                        const isInspected = props.inspectedTeamKey === entry.key;
+                                        const isExpandedSoldCard = props.expandedSoldTeamKey === entry.key;
+                                        const teamLogoUrl = getTeamLogoUrl(entry.team.urlName);
+
+                                        return (
+                                            <button
+                                                type="button"
+                                                key={entry.key}
+                                                className={[
+                                                    "team-rail__team-card",
+                                                    `team-rail__team-card--${entry.status}`,
+                                                    isInspected ? "team-rail__team-card--inspected" : "",
+                                                    isExpandedSoldCard ? "team-rail__team-card--expanded" : "",
+                                                ]
+                                                    .filter(Boolean)
+                                                    .join(" ")}
+                                                onClick={() => props.onInspectTeam(entry)}
+                                                aria-pressed={isInspected}
+                                                aria-expanded={entry.status === "sold" ? isExpandedSoldCard : undefined}
+                                            >
+                                                <span className="team-rail__team-card-shell">
+                                                    <span className="team-rail__team-card-topline">
+                                                        <span className="team-rail__team-card-meta">
+                                                            <span className="team-rail__team-seed-tag">#{entry.team.seed}</span>
+                                                        </span>
+                                                        <span className="team-rail__team-price-badge">
+                                                            {entry.status === "sold"
+                                                                ? `SOLD - ${formatCurrency(entry.purchasePrice)}`
+                                                                : entry.status === "live"
+                                                                    ? "Live"
+                                                                    : "Available"}
+                                                        </span>
+                                                    </span>
+
+                                                    <span className="team-rail__team-card-main">
+                                                        <span className="team-rail__team-logo-shell" aria-hidden="true">
+                                                            {teamLogoUrl ? (
+                                                                <img
+                                                                    className="team-rail__team-logo"
+                                                                    src={teamLogoUrl}
+                                                                    alt=""
+                                                                    loading="lazy"
+                                                                    onError={(event) => {
+                                                                        event.currentTarget.style.display = "none";
+                                                                    }}
+                                                                />
+                                                            ) : (
+                                                                <span className="team-rail__team-logo-fallback">{entry.team.shortName.trim().charAt(0).toUpperCase() || "?"}</span>
+                                                            )}
+                                                        </span>
+
+                                                        <span className="team-rail__team-card-copy">
+                                                            <span className="team-rail__team-card-name">{entry.displayName}</span>
+                                                        </span>
+                                                    </span>
+
+                                                    {entry.status === "sold" ? (
+                                                        <span className="team-rail__team-owner">
+                                                            {entry.bundleSeed ? "Bundle bought by " : "Bought by "}
+                                                            {entry.ownerName?.toUpperCase() || "UNKNOWN"}
+                                                        </span>
+                                                    ) : null}
+                                                </span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            ) : null}
+                        </section>
+                    );
+                })}
+
+                {!hasMatchingEntries ? (
+                    <p className="team-rail__empty-copy">No teams match this filter.</p>
+                ) : null}
+            </div>
+        </aside>
+    );
+}
+
 function useGameWebSocket(gameId: string) {
     const [wsData, setWsData] = useState<WebSocketMessage>({});
     const [error, setError] = useState<string | null>(null);
@@ -168,9 +612,9 @@ function useGameWebSocket(gameId: string) {
     useEffect(() => {
         const ws = new WebSocket(`${BACKEND_WS_URL}/ws/${gameId}`);
 
-        ws.onerror = (error) => {
+        ws.onerror = (socketError) => {
             setError("WebSocket connection error");
-            console.error("WebSocket error:", error);
+            console.error("WebSocket error:", socketError);
         };
 
         ws.onclose = () => {
@@ -179,84 +623,80 @@ function useGameWebSocket(gameId: string) {
 
         ws.onmessage = (event) => {
             if (event.data === "gameStarted") {
-                // ignore
+                return;
             }
-            else {
-                try {
-                    const data: WebSocketMessage = JSON.parse(event.data);
-                    console.log("DATA", data);
-                    if ("players" in data && data.players) {
-                        const players = new Map<string, PlayerInfo>();
-                        Object.entries(data.players).forEach(([key, temp_player]: [string, any]) => {
-                            players.set(key, {
-                                name: temp_player.name,
-                                gameId: temp_player.gameId,
-                                balance: parseInt(temp_player.balance),
-                                points: parseInt(temp_player.points),
-                                teams: Object.values(temp_player.teams).map((temp_team: any) => {
-                                    return {
-                                        shortName: temp_team.shortName,
-                                        urlName: temp_team.urlName,
-                                        seed: temp_team.seed,
-                                        region: temp_team.region,
-                                        purchasePrice: temp_team.purchasePrice
-                                    };
-                                }),
-                            });
+
+            try {
+                const data: WebSocketMessage = JSON.parse(event.data);
+                console.log("DATA", data);
+
+                if ("players" in data && data.players) {
+                    const players = new Map<string, PlayerInfo>();
+                    Object.entries(data.players).forEach(([key, tempPlayer]: [string, any]) => {
+                        players.set(key, {
+                            name: tempPlayer.name,
+                            gameId: tempPlayer.gameId,
+                            balance: parseInt(tempPlayer.balance),
+                            points: parseInt(tempPlayer.points),
+                            teams: Object.values(tempPlayer.teams).map((tempTeam: any) => ({
+                                shortName: tempTeam.shortName,
+                                urlName: tempTeam.urlName,
+                                seed: tempTeam.seed,
+                                region: tempTeam.region,
+                                purchasePrice: tempTeam.purchasePrice,
+                            })),
                         });
-                        setWsData((prev: WebSocketMessage) => ({ ...prev, players }));
-                    }
-                    else if ("bid" in data) {
-                        setWsData((prev: WebSocketMessage) => ({ ...prev, bid: data["bid"] }));
-                    }
-                    else if ("current_bidder" in data) {
-                        setWsData((prev: WebSocketMessage) => ({ ...prev, current_bidder: data["current_bidder"] || "" }));
-                    }
-                    else if ("countdown" in data) {
-                        setWsData((prev: WebSocketMessage) => ({ ...prev, countdown: data["countdown"] }));
-                    }
-                    else if ("team" in data && data.team) {
-                        const team = data.team as TeamInfo;
-                        setWsData((prev: WebSocketMessage) => ({
-                            ...prev, team: {
-                                shortName: team.shortName,
-                                urlName: team.urlName,
-                                seed: team.seed,
-                                region: team.region
-                            }
-                        }));
-                    }
-                    else if ("log" in data) {
-                        setWsData((prev: WebSocketMessage) => ({ ...prev, log: data["log"] }));
-                    }
-                    else if ("remaining" in data && data.remaining) {
-                        const remaining_teams: TeamInfo[] = data.remaining.map((temp_team: { [key: string]: any }) => {
-                            return {
-                                shortName: temp_team["shortName"],
-                                urlName: temp_team["urlName"],
-                                seed: temp_team["seed"],
-                                region: temp_team["region"]
-                            };
-                        });
-                        setWsData((prev: WebSocketMessage) => ({ ...prev, remaining: remaining_teams }));
-                    }
-                    else if ("all_teams" in data && data.all_teams) {
-                        const all_teams: TeamInfo[] = data.all_teams.map((temp_team: { [key: string]: any }) => {
-                            return {
-                                shortName: temp_team["shortName"],
-                                urlName: temp_team["urlName"],
-                                seed: temp_team["seed"],
-                                region: temp_team["region"]
-                            };
-                        });
-                        setWsData((prev: WebSocketMessage) => ({ ...prev, all_teams }));
-                    }
-                } catch (error) {
-                    console.error("Error parsing WebSocket message:", error);
-                    setError("Invalid message format received");
+                    });
+                    setWsData((prev: WebSocketMessage) => ({ ...prev, players }));
                 }
+                else if ("bid" in data) {
+                    setWsData((prev: WebSocketMessage) => ({ ...prev, bid: data.bid }));
+                }
+                else if ("current_bidder" in data) {
+                    setWsData((prev: WebSocketMessage) => ({ ...prev, current_bidder: data.current_bidder || "" }));
+                }
+                else if ("countdown" in data) {
+                    setWsData((prev: WebSocketMessage) => ({ ...prev, countdown: data.countdown }));
+                }
+                else if ("team" in data && data.team) {
+                    const currentTeam = data.team as TeamInfo;
+                    setWsData((prev: WebSocketMessage) => ({
+                        ...prev,
+                        team: {
+                            shortName: currentTeam.shortName,
+                            urlName: currentTeam.urlName,
+                            seed: currentTeam.seed,
+                            region: currentTeam.region,
+                        }
+                    }));
+                }
+                else if ("log" in data) {
+                    setWsData((prev: WebSocketMessage) => ({ ...prev, log: data.log }));
+                }
+                else if ("remaining" in data && data.remaining) {
+                    const remaining = data.remaining.map((tempTeam: { [key: string]: any }) => ({
+                        shortName: tempTeam.shortName,
+                        urlName: tempTeam.urlName,
+                        seed: tempTeam.seed,
+                        region: tempTeam.region,
+                    }));
+                    setWsData((prev: WebSocketMessage) => ({ ...prev, remaining }));
+                }
+                else if ("all_teams" in data && data.all_teams) {
+                    const nextAllTeams = data.all_teams.map((tempTeam: { [key: string]: any }) => ({
+                        shortName: tempTeam.shortName,
+                        urlName: tempTeam.urlName,
+                        seed: tempTeam.seed,
+                        region: tempTeam.region,
+                    }));
+                    setWsData((prev: WebSocketMessage) => ({ ...prev, all_teams: nextAllTeams }));
+                }
+            } catch (parseError) {
+                console.error("Error parsing WebSocket message:", parseError);
+                setError("Invalid message format received");
             }
         };
+
         return () => {
             if (ws.readyState === WebSocket.OPEN) {
                 ws.close();
@@ -280,16 +720,14 @@ function GamePage() {
     const [allTeams, setAllTeams] = useState<TeamInfo[]>([]);
     const [expandedPlayerName, setExpandedPlayerName] = useState<string | null>(null);
     const [copyState, setCopyState] = useState<"idle" | "copied">("idle");
-
-    const panelSurface = {
-        backgroundColor: "rgba(9, 12, 17, 0.72)",
-        border: 1,
-        borderColor: "rgba(255, 255, 255, 0.12)",
-        borderRadius: "22px",
-        boxShadow: "0px 18px 42px rgba(0, 0, 0, 0.28)",
-        backdropFilter: "blur(12px)",
-        color: "#f5eee6"
-    };
+    const [availabilityFilter, setAvailabilityFilter] = useState<AvailabilityFilter>("all");
+    const [teamRailSearchQuery, setTeamRailSearchQuery] = useState("");
+    const [openTeamSections, setOpenTeamSections] = useState<string[]>([]);
+    const [inspectedTeam, setInspectedTeam] = useState<TeamInfo | null>(null);
+    const [inspectedTeamTone, setInspectedTeamTone] = useState<InspectedTeamTone | null>(null);
+    const [inspectedBundleSeed, setInspectedBundleSeed] = useState<number | null>(null);
+    const [expandedSoldTeamKey, setExpandedSoldTeamKey] = useState<string | null>(null);
+    const lastAutoOpenedTeamKey = useRef("");
 
     const { wsData, error } = useGameWebSocket(gameId);
 
@@ -342,6 +780,148 @@ function GamePage() {
     const expandedPlayerTeams = expandedPlayerName ? (playerInfos.get(expandedPlayerName)?.teams || []) : [];
     const highlightedTeamKeys = Array.from(new Set(expandedPlayerTeams.map((ownedTeam) => normalizeTeamKey(ownedTeam)).filter(Boolean)));
 
+    const uniqueTeamRailEntries = useMemo(() => {
+        const liveTeamKey = team.shortName ? normalizeTeamKey(team) : "";
+        const liveBundleSeed = isSeedBundleTeam(team) ? team.seed : null;
+        const remainingTeamKeys = new Set(remainingTeams.map((remainingTeam) => normalizeTeamKey(remainingTeam)).filter(Boolean));
+        const ownedTeamMap = new Map<string, { ownerName: string; purchasePrice?: number; team: TeamInfo }>();
+        const soldBundleMap = new Map<number, { ownerName: string; purchasePrice?: number }>();
+
+        playerInfos.forEach((playerInfo, ownerName) => {
+            playerInfo.teams.forEach((ownedTeam) => {
+                if (isSeedBundleTeam(ownedTeam) && ownedTeam.seed > 0) {
+                    soldBundleMap.set(ownedTeam.seed, {
+                        ownerName,
+                        purchasePrice: ownedTeam.purchasePrice,
+                    });
+                    return;
+                }
+
+                const teamKey = normalizeTeamKey(ownedTeam);
+                if (teamKey) {
+                    ownedTeamMap.set(teamKey, {
+                        ownerName,
+                        purchasePrice: ownedTeam.purchasePrice,
+                        team: cloneTeamInfo(ownedTeam),
+                    });
+                }
+            });
+        });
+
+        const teamRailEntries: TeamRailEntry[] = [];
+
+        allTeams.forEach((availableTeam) => {
+            const teamKey = normalizeTeamKey(availableTeam);
+            if (!teamKey) {
+                return;
+            }
+
+            const ownedRecord = ownedTeamMap.get(teamKey);
+            const soldBundleRecord = (availableTeam.seed === 15 || availableTeam.seed === 16)
+                ? soldBundleMap.get(availableTeam.seed)
+                : undefined;
+            const isLiveTeam = liveTeamKey === teamKey;
+            const isLiveBundleTeam = liveBundleSeed !== null && availableTeam.seed === liveBundleSeed;
+
+            if (soldBundleRecord) {
+                teamRailEntries.push(buildTeamRailEntry(availableTeam, "sold", {
+                    ownerName: soldBundleRecord.ownerName,
+                    purchasePrice: soldBundleRecord.purchasePrice,
+                    bundleSeed: availableTeam.seed,
+                }));
+                return;
+            }
+
+            if (isLiveBundleTeam || isLiveTeam) {
+                teamRailEntries.push(buildTeamRailEntry(availableTeam, "live", {
+                    bundleSeed: isLiveBundleTeam ? availableTeam.seed : undefined,
+                }));
+                return;
+            }
+
+            if (ownedRecord) {
+                teamRailEntries.push(buildTeamRailEntry(ownedRecord.team, "sold", {
+                    ownerName: ownedRecord.ownerName,
+                    purchasePrice: ownedRecord.purchasePrice,
+                }));
+                return;
+            }
+
+            if (remainingTeamKeys.has(teamKey)) {
+                teamRailEntries.push(buildTeamRailEntry(availableTeam, "available"));
+            }
+        });
+
+        return Array.from(
+            new Map(teamRailEntries.map((entry) => [entry.key, entry])).values()
+        ).sort(sortTeamRailEntries);
+    }, [allTeams, playerInfos, remainingTeams, team]);
+
+    const availableSectionIds = useMemo(() => {
+        const sectionIds: string[] = [];
+
+        REGION_SECTION_ORDER.forEach((region) => {
+            if (uniqueTeamRailEntries.some((entry) => entry.team.region === region)) {
+                sectionIds.push(region);
+            }
+        });
+
+        return sectionIds;
+    }, [uniqueTeamRailEntries]);
+
+    const defaultTeamSectionId = useMemo(() => {
+        if (availableSectionIds.includes(team.region)) {
+            return team.region;
+        }
+
+        return availableSectionIds[0] || "";
+    }, [availableSectionIds, team]);
+
+    useEffect(() => {
+        setOpenTeamSections((currentSections) => {
+            const validSections = currentSections.filter((sectionId) => availableSectionIds.includes(sectionId));
+            if (validSections.length === currentSections.length) {
+                return validSections;
+            }
+
+            return validSections.slice(0, 1);
+        });
+    }, [availableSectionIds]);
+
+    useEffect(() => {
+        const liveTeamKey = normalizeTeamKey(team);
+        if (!liveTeamKey || liveTeamKey === lastAutoOpenedTeamKey.current) {
+            return;
+        }
+
+        lastAutoOpenedTeamKey.current = liveTeamKey;
+        if (defaultTeamSectionId) {
+            setOpenTeamSections([defaultTeamSectionId]);
+        }
+    }, [defaultTeamSectionId, team]);
+
+    useEffect(() => {
+        if (!inspectedTeam) {
+            return;
+        }
+
+        const inspectedKey = normalizeTeamKey(inspectedTeam);
+        const hasVisibleEntry = uniqueTeamRailEntries.some((entry) => entry.key === inspectedKey);
+        if (!hasVisibleEntry) {
+            setInspectedTeam(null);
+            setInspectedTeamTone(null);
+            setInspectedBundleSeed(null);
+        }
+    }, [inspectedTeam, uniqueTeamRailEntries]);
+
+    useEffect(() => {
+        if (expandedSoldTeamKey && !uniqueTeamRailEntries.some((entry) => entry.status === "sold" && entry.key === expandedSoldTeamKey)) {
+            setExpandedSoldTeamKey(null);
+        }
+    }, [expandedSoldTeamKey, uniqueTeamRailEntries]);
+
+    const inspectedTeamKey = inspectedTeam ? normalizeTeamKey(inspectedTeam) : "";
+
     const handleTogglePlayer = (nextPlayerName: string) => {
         setExpandedPlayerName((currentPlayerName) => currentPlayerName === nextPlayerName ? null : nextPlayerName);
     };
@@ -357,6 +937,29 @@ function GamePage() {
             window.setTimeout(() => setCopyState("idle"), 1400);
         } catch (copyError) {
             console.error("Unable to copy game code", copyError);
+        }
+    };
+
+    const handleToggleTeamSection = (sectionId: string) => {
+        if (teamRailSearchQuery.trim()) {
+            return;
+        }
+
+        setOpenTeamSections((currentSections) => currentSections.includes(sectionId) ? [] : [sectionId]);
+    };
+
+    const handleInspectTeam = (entry: TeamRailEntry) => {
+        setInspectedTeam(cloneTeamInfo(entry.team));
+        setInspectedTeamTone(entry.status === "sold" ? "sold" : "available");
+        setInspectedBundleSeed(entry.bundleSeed || null);
+
+        if (entry.status === "sold" && shouldUseTapSoldCardReveal()) {
+            setExpandedSoldTeamKey((currentKey) => currentKey === entry.key ? null : entry.key);
+            return;
+        }
+
+        if (entry.status !== "sold") {
+            setExpandedSoldTeamKey(null);
         }
     };
 
@@ -429,45 +1032,38 @@ function GamePage() {
                                         boxShadow: "none"
                                     }}
                                 >
-                                    {allTeams.length > 0 ?
+                                    {allTeams.length > 0 ? (
                                         <Bracket
                                             all_teams={allTeams}
                                             selected_team={team}
                                             highlightedTeamKeys={highlightedTeamKeys}
+                                            inspectedTeam={inspectedTeam}
+                                            inspectedTeamTone={inspectedTeamTone}
+                                            inspectedBundleSeed={inspectedBundleSeed}
                                         />
-                                        : <Typography sx={{ color: "white", padding: 2 }}>No teams available</Typography>
-                                    }
+                                    ) : (
+                                        <Typography sx={{ color: "white", padding: 2 }}>No teams available</Typography>
+                                    )}
                                 </Card>
                             </Grid>
                         </Grid>
                     </Grid>
 
                     <Grid item xs={12} lg={2}>
-                        <Card sx={{ ...panelSurface, minHeight: { xs: 320, lg: 760 }, maxHeight: { xs: "none", lg: 760 }, overflowY: "auto", width: "100%" }}>
-                            <Grid container spacing={1} sx={{ flexWrap: "wrap", padding: 1 }}>
-                                {remainingTeams.length > 0 ?
-                                    remainingTeams.map((temp_team, i) => {
-                                        const teamLogo = temp_team.region !== "region" ? getTeamLogoUrl(temp_team.urlName) : "";
-
-                                        return (
-                                            <Grid item key={i} xs="auto">
-                                                <Chip sx={{ backgroundColor: "rgba(255, 255, 255, 0.08)", border: "1px solid rgba(255, 255, 255, 0.06)" }}>
-                                                    <Typography sx={{ color: "#f6eee5", fontSize: "12px" }}>
-                                                        {temp_team.region !== "region" && teamLogo && (
-                                                            <img src={teamLogo} alt="" style={{ width: "10px", height: "10px", paddingRight: 4 }} />
-                                                        )}
-                                                        {temp_team.shortName} ({temp_team.seed})
-                                                    </Typography>
-                                                </Chip>
-                                            </Grid>
-                                        );
-                                    })
-                                    : <Typography>No teams available</Typography>
-                                }
-                            </Grid>
-                        </Card>
+                        <TeamsRail
+                            entries={uniqueTeamRailEntries}
+                            currentTeam={team}
+                            availabilityFilter={availabilityFilter}
+                            searchQuery={teamRailSearchQuery}
+                            openSections={openTeamSections}
+                            inspectedTeamKey={inspectedTeamKey}
+                            expandedSoldTeamKey={expandedSoldTeamKey}
+                            onAvailabilityChange={setAvailabilityFilter}
+                            onSearchChange={setTeamRailSearchQuery}
+                            onToggleSection={handleToggleTeamSection}
+                            onInspectTeam={handleInspectTeam}
+                        />
                     </Grid>
-
                 </Grid>
 
                 <AuctionBiddingPanel

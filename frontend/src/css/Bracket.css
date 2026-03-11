@@ -365,6 +365,58 @@
     drop-shadow(0 0 7px rgba(184, 18, 12, 0.1));
 }
 
+.graveyard-bracket__card--inspected-available .graveyard-bracket__card-frame-stroke {
+  fill: rgba(7, 26, 14, 0.96);
+  stroke: rgba(87, 232, 121, 1);
+  stroke-width: 1.9;
+  filter:
+    drop-shadow(0 0 1px rgba(226, 255, 232, 0.6))
+    drop-shadow(0 0 3px rgba(120, 255, 146, 0.3))
+    drop-shadow(0 0 6px rgba(56, 204, 88, 0.16));
+}
+
+.graveyard-bracket__card--inspected-available .graveyard-bracket__card-frame-sketch {
+  stroke: rgba(227, 255, 232, 0.42);
+  stroke-width: 0.95;
+  transform: translate(-0.7px, -0.55px) rotate(-0.2deg);
+  filter:
+    drop-shadow(0 0 1px rgba(233, 255, 237, 0.34))
+    drop-shadow(0 0 4px rgba(87, 232, 121, 0.18));
+}
+
+.graveyard-bracket__card--inspected-available .graveyard-bracket__card-frame-shadow {
+  fill: rgba(8, 25, 12, 0.72);
+  filter:
+    drop-shadow(0 0 3px rgba(87, 232, 121, 0.12))
+    drop-shadow(0 0 7px rgba(36, 154, 70, 0.08));
+}
+
+.graveyard-bracket__card--inspected-sold .graveyard-bracket__card-frame-stroke {
+  fill: rgba(7, 20, 36, 0.98);
+  stroke: rgba(92, 188, 255, 1);
+  stroke-width: 2;
+  filter:
+    drop-shadow(0 0 1px rgba(236, 248, 255, 0.72))
+    drop-shadow(0 0 3px rgba(128, 206, 255, 0.34))
+    drop-shadow(0 0 7px rgba(74, 163, 255, 0.2));
+}
+
+.graveyard-bracket__card--inspected-sold .graveyard-bracket__card-frame-sketch {
+  stroke: rgba(236, 249, 255, 0.48);
+  stroke-width: 0.95;
+  transform: translate(-0.7px, -0.55px) rotate(-0.2deg);
+  filter:
+    drop-shadow(0 0 1px rgba(235, 248, 255, 0.34))
+    drop-shadow(0 0 4px rgba(96, 188, 255, 0.26));
+}
+
+.graveyard-bracket__card--inspected-sold .graveyard-bracket__card-frame-shadow {
+  fill: rgba(8, 20, 34, 0.76);
+  filter:
+    drop-shadow(0 0 3px rgba(93, 191, 255, 0.16))
+    drop-shadow(0 0 7px rgba(21, 95, 203, 0.08));
+}
+
 .graveyard-bracket__card--owner-highlight .graveyard-bracket__card-frame-stroke {
   fill: rgba(7, 20, 36, 0.97);
   stroke: rgba(74, 163, 255, 1);
@@ -438,6 +490,11 @@
   animation: graveyard-bracket-live-dot 1.4s ease-in-out infinite;
 }
 
+.graveyard-bracket__card--inspected-available::after,
+.graveyard-bracket__card--inspected-sold::after {
+  content: none;
+}
+
 @keyframes graveyard-bracket-live-dot {
   0%,
   100% {
@@ -492,6 +549,30 @@
 .graveyard-bracket__row--selected .graveyard-bracket__team-name {
   color: #fff4eb;
   text-shadow: 0 0 8px rgba(255, 212, 202, 0.8), 0 0 22px rgba(255, 58, 58, 0.48);
+}
+
+.graveyard-bracket__row--inspected-available .graveyard-bracket__seed,
+.graveyard-bracket__row--inspected-available .graveyard-bracket__team-name {
+  color: #caffd4;
+  text-shadow: 0 0 8px rgba(127, 255, 154, 0.36), 0 0 20px rgba(62, 214, 100, 0.22);
+}
+
+.graveyard-bracket__row--inspected-available .graveyard-bracket__logo {
+  filter:
+    drop-shadow(0 0 8px rgba(87, 232, 121, 0.34))
+    drop-shadow(0 0 16px rgba(87, 232, 121, 0.16));
+}
+
+.graveyard-bracket__row--inspected-sold .graveyard-bracket__seed,
+.graveyard-bracket__row--inspected-sold .graveyard-bracket__team-name {
+  color: #d9efff;
+  text-shadow: 0 0 10px rgba(127, 202, 255, 0.42), 0 0 22px rgba(74, 163, 255, 0.28);
+}
+
+.graveyard-bracket__row--inspected-sold .graveyard-bracket__logo {
+  filter:
+    drop-shadow(0 0 8px rgba(74, 163, 255, 0.44))
+    drop-shadow(0 0 18px rgba(74, 163, 255, 0.26));
 }
 
 .graveyard-bracket__row--owned .graveyard-bracket__seed,
