@@ -1,8 +1,0 @@
-- generic [ref=e3]:
-  - generic [ref=e4]:
-    - button "Create Game" [ref=e6] [cursor=pointer]
-    - img "Central Game" [ref=e8]
-    - button "Join Game" [ref=e10] [cursor=pointer]
-  - button "View Game" [ref=e12] [cursor=pointer]
-  - button [ref=e13] [cursor=pointer]:
-    - img [ref=e14]

@@ -6,3 +6,6 @@ venv
 *log.md
 frontend_changelog.md
 AGENTS.md
+*playwright*
+docs/
+output/
