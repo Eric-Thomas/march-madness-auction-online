@@ -40,6 +40,7 @@ type TeamRailEntry = {
 
 interface PlayersRailProps {
     players: Array<[string, PlayerInfo]>;
+    currentPlayerName?: string;
     expandedPlayerName: string | null;
     currentBidder: string;
     onTogglePlayer: (playerName: string) => void;
@@ -179,6 +180,7 @@ function PlayersRail(props: PlayersRailProps) {
                     props.players.map(([playerName, playerInfo]) => {
                         const isExpanded = props.expandedPlayerName === playerName;
                         const isHighestBidder = Boolean(props.currentBidder) && props.currentBidder === playerName;
+                        const isCurrentPlayer = Boolean(props.currentPlayerName) && props.currentPlayerName === playerName;
                         const teamCount = playerInfo.teams.length;
 
                         return (
@@ -189,6 +191,7 @@ function PlayersRail(props: PlayersRailProps) {
                                     "player-rail__card",
                                     isExpanded ? "player-rail__card--expanded" : "",
                                     isHighestBidder ? "player-rail__card--leader" : "",
+                                    isCurrentPlayer ? "player-rail__card--self" : "",
                                 ]
                                     .filter(Boolean)
                                     .join(" ")}
@@ -775,6 +778,7 @@ function GamePage() {
     const auctionNumber = totalAuctions > 0
         ? Math.min(totalAuctions, Math.max(1, totalAuctions - remainingTeams.length + (team.shortName ? 1 : 0)))
         : 0;
+    const isAuctionLive = remainingTeams.length > 0 || Boolean(team.shortName);
     const activePlayerBalance = playerName ? (playerInfos.get(playerName)?.balance || 0) : 0;
     const orderedPlayers = Array.from(playerInfos.entries());
     const expandedPlayerTeams = expandedPlayerName ? (playerInfos.get(expandedPlayerName)?.teams || []) : [];
@@ -983,6 +987,15 @@ function GamePage() {
                     </div>
 
                     <div className="graveyard-bracket__meta">
+                        <div className="graveyard-bracket__meta-chip graveyard-bracket__meta-chip--status">
+                            <span className="graveyard-bracket__meta-label">Round 1</span>
+                            <span className="graveyard-bracket__meta-divider">•</span>
+                            <span className="graveyard-bracket__meta-label">Auction</span>
+                            <span className="graveyard-bracket__meta-value">
+                                {auctionNumber}/{totalAuctions || allTeams.length}
+                            </span>
+                        </div>
+
                         <div className="graveyard-bracket__meta-chip">
                             <span className="graveyard-bracket__meta-label">Game Code</span>
                             <span className="graveyard-bracket__meta-value">{gameId || "------"}</span>
@@ -991,13 +1004,13 @@ function GamePage() {
                             </button>
                         </div>
 
-                        <div className="graveyard-bracket__meta-chip graveyard-bracket__meta-chip--status">
-                            <span className="graveyard-bracket__meta-label">Round 1</span>
-                            <span className="graveyard-bracket__meta-divider">•</span>
-                            <span className="graveyard-bracket__meta-label">Auction</span>
-                            <span className="graveyard-bracket__meta-value">
-                                {auctionNumber}/{totalAuctions || allTeams.length}
-                            </span>
+                        <div className={[
+                            "graveyard-bracket__meta-chip",
+                            "graveyard-bracket__meta-chip--live",
+                            isAuctionLive ? "graveyard-bracket__meta-chip--live-active" : "graveyard-bracket__meta-chip--live-complete",
+                        ].join(" ")}>
+                            <span className="graveyard-bracket__live-indicator" aria-hidden="true" />
+                            <span className="graveyard-bracket__meta-label">{isAuctionLive ? "LIVE" : "DONE"}</span>
                         </div>
                     </div>
                 </div>
@@ -1011,6 +1024,7 @@ function GamePage() {
                     <Grid item xs={12} lg={2}>
                         <PlayersRail
                             players={orderedPlayers}
+                            currentPlayerName={playerName}
                             expandedPlayerName={expandedPlayerName}
                             currentBidder={currentBidder}
                             onTogglePlayer={handleTogglePlayer}

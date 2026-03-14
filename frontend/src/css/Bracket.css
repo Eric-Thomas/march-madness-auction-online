@@ -62,19 +62,75 @@
 }
 
 .graveyard-bracket__meta-chip {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 12px;
   min-height: 48px;
-  padding: 10px 16px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 18px;
-  background: rgba(10, 13, 18, 0.52);
-  backdrop-filter: blur(10px);
+  padding: 11px 16px 10px;
+  border: 1px solid rgba(255, 183, 164, 0.14);
+  border-radius: 0;
+  background:
+    linear-gradient(180deg, rgba(17, 20, 27, 0.9), rgba(8, 11, 15, 0.86)),
+    rgba(10, 13, 18, 0.52);
+  box-shadow:
+    0 12px 22px rgba(0, 0, 0, 0.22),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+  clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+}
+
+.graveyard-bracket__meta-chip::before {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  border: 1px solid rgba(255, 245, 236, 0.04);
+  pointer-events: none;
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
 }
 
 .graveyard-bracket__meta-chip--status {
   gap: 10px;
+}
+
+.graveyard-bracket__meta-chip--live {
+  justify-content: center;
+  flex-direction: row;
+  gap: 8px;
+  width: 92px;
+  min-width: 92px;
+  min-height: 48px;
+  padding: 8px 10px 7px;
+  background:
+    linear-gradient(180deg, rgba(56, 17, 16, 0.96), rgba(25, 10, 10, 0.94)),
+    rgba(10, 13, 18, 0.52);
+}
+
+.graveyard-bracket__meta-chip--live-active {
+  border-color: rgba(255, 107, 78, 0.28);
+  box-shadow:
+    0 12px 22px rgba(0, 0, 0, 0.24),
+    inset 0 0 0 1px rgba(255, 82, 52, 0.06),
+    0 0 18px rgba(193, 31, 20, 0.1);
+}
+
+.graveyard-bracket__meta-chip--live-complete {
+  border-color: rgba(255, 221, 190, 0.14);
+  background:
+    linear-gradient(180deg, rgba(28, 23, 23, 0.94), rgba(14, 13, 13, 0.92)),
+    rgba(10, 13, 18, 0.52);
+}
+
+.graveyard-bracket__meta-chip--live::before {
+  border-color: rgba(255, 240, 232, 0.05);
+}
+
+.graveyard-bracket__meta-chip--live::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: url("../images/cracked_texture.png") center / cover no-repeat;
+  opacity: 0.09;
+  pointer-events: none;
 }
 
 .graveyard-bracket__meta-label {
@@ -111,6 +167,49 @@
   letter-spacing: 0.12em;
   padding: 6px 10px;
   text-transform: uppercase;
+}
+
+.graveyard-bracket__live-indicator {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: #ff4b2b;
+  box-shadow:
+    0 0 0 1px rgba(255, 180, 167, 0.2),
+    0 0 10px rgba(255, 75, 43, 0.4);
+  flex: 0 0 auto;
+}
+
+.graveyard-bracket__meta-chip--live-active .graveyard-bracket__live-indicator {
+  animation: graveyard-bracket-live-pill-dot 1.35s ease-in-out infinite;
+}
+
+.graveyard-bracket__meta-chip--live-complete .graveyard-bracket__live-indicator {
+  background: rgba(210, 198, 188, 0.44);
+  box-shadow: none;
+}
+
+.graveyard-bracket__meta-chip--live .graveyard-bracket__meta-label {
+  font-size: 0.92rem;
+  letter-spacing: 0.14em;
+}
+
+@keyframes graveyard-bracket-live-pill-dot {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    box-shadow:
+      0 0 0 1px rgba(255, 180, 167, 0.2),
+      0 0 8px rgba(255, 75, 43, 0.34);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(0.88);
+    box-shadow:
+      0 0 0 1px rgba(255, 180, 167, 0.14),
+      0 0 16px rgba(255, 75, 43, 0.48);
+  }
 }
 
 .graveyard-bracket__stage-wrap {
@@ -235,20 +334,26 @@
 
 .graveyard-bracket__region-name {
   position: absolute;
-  color: rgba(255, 233, 221, 0.88);
-  font-family: "Barlow Condensed", sans-serif;
-  font-size: 1.9rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  line-height: 0.9;
+  color: rgba(255, 226, 214, 0.12);
+  font-family: "Scary Brusher", "Rajdhani", sans-serif;
+  font-size: 12.4rem;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  line-height: 0.82;
   text-transform: uppercase;
   pointer-events: none;
-  text-shadow: 0 8px 22px rgba(0, 0, 0, 0.4);
-  z-index: 3;
+  text-shadow:
+    0 10px 24px rgba(0, 0, 0, 0.2),
+    0 0 18px rgba(171, 18, 12, 0.08);
+  mix-blend-mode: screen;
+  z-index: 0;
+  white-space: nowrap;
+  transform: translateY(-50%);
 }
 
 .graveyard-bracket__region-name--left {
   text-align: right;
+  transform: translate(-100%, -50%);
 }
 
 .graveyard-bracket__region-name--right {

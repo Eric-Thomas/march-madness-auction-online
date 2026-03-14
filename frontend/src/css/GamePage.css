@@ -140,6 +140,52 @@
   border-color: rgba(255, 227, 214, 0.18);
 }
 
+.player-rail__card--self .player-rail__card-shell {
+  border-color: rgba(255, 212, 118, 0.7);
+  background: rgba(22, 17, 10, 0.96);
+  box-shadow:
+    0 12px 22px rgba(0, 0, 0, 0.3),
+    inset 0 0 0 1px rgba(255, 214, 127, 0.1);
+}
+
+.player-rail__card--self .player-rail__card-shell::after {
+  inset: 5px;
+  border-color: rgba(255, 233, 184, 0.28);
+  box-shadow:
+    0 0 1px rgba(255, 247, 228, 0.5),
+    0 0 3px rgba(255, 214, 127, 0.24),
+    0 0 8px rgba(214, 160, 34, 0.14);
+}
+
+.player-rail__card--self .player-rail__card-shell::before {
+  opacity: 0.1;
+}
+
+.player-rail__card--self .player-rail__name {
+  color: #fff5de;
+  text-shadow:
+    0 0 1px rgba(255, 245, 226, 0.78),
+    0 0 8px rgba(255, 198, 92, 0.12);
+}
+
+.player-rail__card--self .player-rail__badge {
+  border-color: rgba(255, 214, 112, 0.24);
+  background: rgba(88, 58, 8, 0.92);
+  color: #ffd989;
+}
+
+.player-rail__card--self:hover .player-rail__card-shell,
+.player-rail__card--self:focus-visible .player-rail__card-shell {
+  border-color: rgba(255, 223, 136, 0.7);
+  box-shadow:
+    0 14px 24px rgba(0, 0, 0, 0.34),
+    0 0 1px rgba(255, 248, 234, 0.72),
+    0 0 4px rgba(255, 215, 130, 0.34),
+    0 0 10px rgba(214, 160, 34, 0.22),
+    0 0 20px rgba(173, 119, 16, 0.14),
+    inset 0 0 0 1px rgba(255, 241, 197, 0.08);
+}
+
 .player-rail__summary {
   position: relative;
   display: flex;
@@ -406,7 +452,7 @@
   top: 0;
   z-index: 3;
   margin: -16px -8px 0;
-  padding: 16px 8px 0;
+  padding: 12px 8px 0;
   overflow: hidden;
 }
 

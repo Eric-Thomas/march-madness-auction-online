@@ -53,10 +53,10 @@ interface BracketProps {
 type RegionSide = "left" | "right";
 
 const REGION_POSITIONS = [
-  { name: "South", side: "left" as RegionSide, top: 120, left: 54 },
-  { name: "East", side: "left" as RegionSide, top: 888, left: 54 },
-  { name: "Midwest", side: "right" as RegionSide, top: 120, left: 1564 },
-  { name: "West", side: "right" as RegionSide, top: 888, left: 1564 },
+  { name: "South", side: "left" as RegionSide, top: 96, left: 54 },
+  { name: "East", side: "left" as RegionSide, top: 864, left: 54 },
+  { name: "Midwest", side: "right" as RegionSide, top: 96, left: 1564 },
+  { name: "West", side: "right" as RegionSide, top: 864, left: 1564 },
 ];
 
 const ROUND_LABELS = ["Round 1", "Round 2", "Sweet 16", "Elite 8"];
@@ -64,7 +64,7 @@ const ROUND_WIDTHS = [248, 214, 194, 172];
 const REGION_WIDTH = 962;
 const REGION_HEIGHT = 596;
 const REGION_PADDING_X = 16;
-const REGION_PADDING_TOP = 54;
+const REGION_PADDING_TOP = 42;
 const COLUMN_GAP = 24;
 const MATCH_HEIGHT = 58;
 const MATCH_GAP = 10;
@@ -819,8 +819,8 @@ function Bracket(props: BracketProps) {
                   `graveyard-bracket__region-name--${region.side}`,
                 ].join(" ")}
                 style={{
-                  left: `${region.layout.regionAnchor.x - region.left + (region.side === "left" ? 26 : -126)}px`,
-                  top: `${218}px`,
+                  left: `${region.layout.regionAnchor.x - region.left + (region.side === "left" ? -186 : 186)}px`,
+                  top: `${318}px`,
                 }}
               >
                 {region.name}
