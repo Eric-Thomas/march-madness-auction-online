@@ -1,10 +1,10 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
-import { BACKEND_WS_URL } from "./Utils";
+import { BACKEND_HTTP_URL, BACKEND_WS_URL } from "./Utils";
 import imageSrc from "./images/march_madness_logo_auction.png";
-import { ReactComponent as CrownIcon } from "./icons/crown.svg";
-import { ReactComponent as UserIcon } from "./icons/user.svg";
+import CrownIcon from "./icons/crown.svg?react";
+import UserIcon from "./icons/user.svg?react";
 import "./css/Fonts.css";
 import "./css/Bracket.css";
 import "./css/BloodbathPages.css";
@@ -14,12 +14,48 @@ const ROSTER_ICON_COLORS = ["#ff6b4a", "#49a7ff", "#ffd46f", "#69dd8f", "#ff8a57
 function LobbyPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { gameId, isCreator, playerName } = location.state || {};
+  const [gameId, setGameId] = useState<string>(location.state?.gameId || "");
+  const [isCreator, setIsCreator] = useState<boolean>(location.state?.isCreator || false);
+  const [playerName, setPlayerName] = useState<string>(location.state?.playerName || "");
 
   const [players, setPlayers] = useState<string[]>([]);
   const wsRef = useRef<WebSocket | null>(null);
+  const [sessionLoaded, setSessionLoaded] = useState<boolean>(!!location.state?.gameId);
+
+  // If no state from navigation, try to recover from session cookie
+  useEffect(() => {
+    if (location.state?.gameId) return;
+    const recover = async () => {
+      try {
+        const response = await fetch(`${BACKEND_HTTP_URL}/rejoin/`, { credentials: "include" });
+        if (response.ok) {
+          const data = await response.json();
+          const routeState = { gameId: data.gameId, isCreator: data.isCreator, playerName: data.playerName };
+          if (data.phase === "ended") {
+            navigate("/view", { state: { gameId: data.gameId } });
+            return;
+          }
+          if (data.phase === "auction") {
+            navigate("/game", { state: routeState });
+            return;
+          }
+          setGameId(data.gameId);
+          setIsCreator(data.isCreator);
+          setPlayerName(data.playerName);
+          setSessionLoaded(true);
+        } else {
+          navigate("/");
+        }
+      } catch {
+        navigate("/");
+      }
+    };
+    recover();
+  }, [location.state, navigate]);
 
   useEffect(() => {
+    if (!sessionLoaded || !gameId) return;
+
     const ws = new WebSocket(`${BACKEND_WS_URL}/ws/${gameId}`);
     wsRef.current = ws;
 
@@ -36,7 +72,7 @@ function LobbyPage() {
     };
 
     return () => ws.close();
-  }, [navigate, gameId, isCreator, playerName]);
+  }, [navigate, gameId, isCreator, playerName, sessionLoaded]);
 
   const handleStartGameClick = () => {
     if (isCreator && wsRef.current) {

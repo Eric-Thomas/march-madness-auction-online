@@ -55,7 +55,7 @@ function HomePage() {
   const [isPlaying, setIsPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const hasInteractedRef = useRef(false);
-  const shouldEnableAudio = process.env.NODE_ENV !== "test";
+  const shouldEnableAudio = import.meta.env.MODE !== "test";
 
   useEffect(() => {
     if (!shouldEnableAudio) {
@@ -147,6 +147,31 @@ function HomePage() {
     setIsDialogOpen(true);
   };
 
+  // Check for existing session on mount
+  useEffect(() => {
+    const checkSession = async () => {
+      try {
+        const response = await fetch(`${BACKEND_HTTP_URL}/rejoin/`, {
+          credentials: "include",
+        });
+        if (response.ok) {
+          const data = await response.json();
+          const routeState = { gameId: data.gameId, isCreator: data.isCreator, playerName: data.playerName };
+          if (data.phase === "ended") {
+            navigate("/view", { state: { gameId: data.gameId } });
+          } else if (data.phase === "auction") {
+            navigate("/game", { state: routeState });
+          } else {
+            navigate("/lobby", { state: routeState });
+          }
+        }
+      } catch (error) {
+        // No session or server down — stay on home page
+      }
+    };
+    checkSession();
+  }, [navigate]);
+
   const handleCreateGame = async () => {
     setDialogError("");
     try {
@@ -155,6 +180,7 @@ function HomePage() {
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include",
         body: JSON.stringify({ player: playerName }),
       });
 
@@ -178,6 +204,7 @@ function HomePage() {
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include",
         body: JSON.stringify({ gameId, player: playerName }),
       });
 
@@ -202,6 +229,7 @@ function HomePage() {
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include",
         body: JSON.stringify({ gameId }),
       });
 

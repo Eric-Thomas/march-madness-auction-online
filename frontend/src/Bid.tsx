@@ -76,6 +76,7 @@ function Bid(props: BidProps) {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({ gameId: props.gameId, player: props.player, bid: bidNumber, team: props.team }),
       });
 

@@ -1,5 +1,5 @@
-const backendHost = process.env.REACT_APP_BACKEND_HOST || "127.0.0.1";
-const backendPort = process.env.REACT_APP_BACKEND_PORT || "8000";
+const backendHost = import.meta.env.VITE_BACKEND_HOST || "127.0.0.1";
+const backendPort = import.meta.env.VITE_BACKEND_PORT || "8000";
 const browserHostname = typeof window !== "undefined" ? window.location.hostname : "127.0.0.1";
 const resolvedBackendHost = backendHost === "0.0.0.0" ? browserHostname : backendHost;
 const pageProtocol = typeof window !== "undefined" ? window.location.protocol : "http:";
