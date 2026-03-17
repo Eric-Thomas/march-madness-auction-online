@@ -76,7 +76,9 @@ export class MarchMadnessAuctionStack extends cdk.Stack {
     ecsInstanceSg.addIngressRule(albSecurityGroup, ec2.Port.tcp(80), 'Allow HTTP traffic from ALB');
     ecsInstanceSg.addIngressRule(albSecurityGroup, ec2.Port.tcp(8000), 'Allow Backend traffic from ALB');
     ecsInstanceSg.addEgressRule(ec2.Peer.anyIpv4(), ec2.Port.allTcp(), 'Allow all outbound traffic');
-    ecsInstanceSg.addIngressRule(ec2.Peer.ipv4(`${process.env.ERIC_IP}`), ec2.Port.tcp(22), 'Allow SSH from my IP for debugging');
+    if (process.env.ERIC_IP) {
+      ecsInstanceSg.addIngressRule(ec2.Peer.ipv4(`${process.env.ERIC_IP}`), ec2.Port.tcp(22), 'Allow SSH from my IP for debugging');
+    }
     const autoScalingGroup = new autoscaling.AutoScalingGroup(this, 'ASG', {
       vpc,
       instanceType: ec2.InstanceType.of(ec2.InstanceClass.T3, ec2.InstanceSize.MICRO),
@@ -111,7 +113,7 @@ export class MarchMadnessAuctionStack extends cdk.Stack {
     });
 
     frontEndTaskDef.addContainer('FrontEndContainer', {
-      image: ecs.ContainerImage.fromRegistry(`${props?.env?.account}.dkr.ecr.us-east-1.amazonaws.com/march-madness-auction:frontend.v3.0.0`), // Update this with newest version to deploy latest changes
+      image: ecs.ContainerImage.fromRegistry(`${props?.env?.account}.dkr.ecr.us-east-1.amazonaws.com/march-madness-auction:frontend.v3.1.0`), // Update this with newest version to deploy latest changes
       cpu: 256,
       memoryLimitMiB: 512,
       containerName: 'march-madness-auction-frontend',
@@ -152,7 +154,7 @@ export class MarchMadnessAuctionStack extends cdk.Stack {
     });
 
     backEndTaskDef.addContainer('BackEndContainer', {
-      image: ecs.ContainerImage.fromRegistry(`${props?.env?.account}.dkr.ecr.us-east-1.amazonaws.com/march-madness-auction:backend.v3.0.0`), // Update this with newest version to deploy latest changes
+      image: ecs.ContainerImage.fromRegistry(`${props?.env?.account}.dkr.ecr.us-east-1.amazonaws.com/march-madness-auction:backend.v3.1.0`), // Update this with newest version to deploy latest changes
       cpu: 256,
       memoryLimitMiB: 256,
       containerName: 'march-madness-auction-backend',
