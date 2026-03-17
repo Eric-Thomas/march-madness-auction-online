@@ -1,11 +1,18 @@
 import csv
-import requests
+import json
+import pathlib
 
-from app.types.types import TeamInfo, MatchInfo
+import requests
+from app.types.types import MatchInfo, TeamInfo
 
 
 def get_teams(year: int, month: str, days: tuple[str, str]) -> dict[str, TeamInfo]:
     """
+    NOTE: hardcoding bracket for 2026 by feeding in bracket to chatgpt and having it generate the json file.
+    API doesn't seem to be working for 2026.
+    I'm not gonna update any calling functions right now
+
+
     Generate Team Name, Seed, and Region. Uses an api indexing the dates of the first rounds of 64 to fill csv.
 
     :param year: The tournament year.
@@ -19,37 +26,27 @@ def get_teams(year: int, month: str, days: tuple[str, str]) -> dict[str, TeamInf
     """
 
     teams: dict[str, TeamInfo] = {}
-    for day in days:
-        url: str = f"https://data.ncaa.com/casablanca/scoreboard/basketball-men/d1/{year}/{month}/{day}/scoreboard.json"
-        response = requests.get(url, verify=False)
+    with open(pathlib.Path(__file__).parent / "2026_bracket.json", "r") as file:
+        bracket_2026 = json.load(file)
+        for game in bracket_2026.get("games", []):  # Adjust the path based on the actual data structure
+            away_team: dict = game.get("game").get("away")
+            home_team: dict = game.get("game").get("home")
+            region = game.get("game").get("bracketRegion")
+            away_team_info = TeamInfo(
+                shortName=away_team.get("names").get("short"),
+                urlName=away_team.get("names").get("seo"),
+                seed=away_team.get("seed"),
+                region=region,
+            )
+            teams[away_team_info.shortName] = away_team_info
 
-        if response.status_code == 200:
-            data = response.json()
-
-            for game in data.get("games", []):  # Adjust the path based on the actual data structure
-                away_team:dict = game.get("game").get("away")
-                home_team:dict = game.get("game").get("home")
-                region = game.get("game").get("bracketRegion")
-
-                if away_team.get("seed"):
-                    away_team_info = TeamInfo(
-                        shortName=away_team.get("names").get("short"),
-                        urlName=away_team.get("names").get("seo"),
-                        seed=away_team.get("seed"),
-                        region=region
-                    )
-                    teams[away_team_info.shortName] = away_team_info
-
-                if home_team.get("seed"):
-                    home_team_info = TeamInfo(
-                        shortName=home_team.get("names").get("short"),
-                        urlName=home_team.get("names").get("seo"),
-                        seed=home_team.get("seed"),
-                        region=region
-                    )
-                    teams[home_team_info.shortName] = home_team_info
-        else:
-            print(f"ERROR READING URL: {url}: {response.status_code}")
+            home_team_info = TeamInfo(
+                shortName=home_team.get("names").get("short"),
+                urlName=home_team.get("names").get("seo"),
+                seed=home_team.get("seed"),
+                region=region,
+            )
+            teams[home_team_info.shortName] = home_team_info
     return teams
 
 
@@ -87,13 +84,13 @@ def get_matches(year: int, month: str, days: tuple[str, str]) -> list[MatchInfo]
                     shortName=away_team.get("names").get("short"),
                     urlName=away_team.get("names").get("seo"),
                     seed=away_team.get("seed"),
-                    region=region
+                    region=region,
                 )
                 home_team_info = TeamInfo(
                     shortName=home_team.get("names").get("short"),
                     urlName=home_team.get("names").get("seo"),
                     seed=home_team.get("seed"),
-                    region=region
+                    region=region,
                 )
                 winner_name = away_team_info.shortName if away_team.get("winner") else home_team_info.shortName
 
@@ -102,12 +99,9 @@ def get_matches(year: int, month: str, days: tuple[str, str]) -> list[MatchInfo]
                         id=id,
                         nextMatchId=-1,
                         roundName=bracket_round,
-                        participants=[
-                            away_team_info,
-                            home_team_info
-                        ],
+                        participants=[away_team_info, home_team_info],
                         winner=winner_name,
-                        startDate=start_date
+                        startDate=start_date,
                     )
                 )
         else:
