@@ -1,5 +1,3 @@
-export const BACKEND_URL = `${process.env.REACT_APP_BACKEND_HOST}:${process.env.REACT_APP_BACKEND_PORT}`;
-console.log("BACKEND_URL", BACKEND_URL)
 
 export interface TeamInfo {
     shortName: string
@@ -93,7 +91,7 @@ export function GenerateRegionBracketData(regionTeams: TeamInfo[]): Match[] {
 }
 
 
-export function IntegrateMatchResults(bracketMatches:Match[], matchResults:Match[]): Match[] {
-    
+export function IntegrateMatchResults(bracketMatches: Match[], matchResults: Match[]): Match[] {
+
     return bracketMatches;
 }

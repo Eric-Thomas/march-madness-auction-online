@@ -3,7 +3,6 @@ import { Button, Input } from '@mui/joy';
 import { Grid } from '@mui/material';
 import { debounce } from 'lodash';
 
-import { BACKEND_URL } from "./Utils"
 
 import './css/App.css';
 
@@ -40,7 +39,7 @@ function Bid(props: BidProps) {
       alert('Please enter a valid number for your bid.');
       return;
     }
-    
+
     if (bidNumber <= props.currentHighestBid) {
       alert('Your bid must be higher than the current highest bid.');
       return;
@@ -53,7 +52,7 @@ function Bid(props: BidProps) {
 
     setIsSubmitting(true);
     try {
-      const response = await fetch(`http://${BACKEND_URL}/bid/`, {
+      const response = await fetch(`/api/bid/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -87,8 +86,8 @@ function Bid(props: BidProps) {
           />
         </Grid>
         <Grid item xs={6} sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-          <Button 
-            sx={{ backgroundColor: 'var(--primary-color)', color: 'white' }} 
+          <Button
+            sx={{ backgroundColor: 'var(--primary-color)', color: 'white' }}
             onClick={handleSubmit}
             disabled={isSubmitting}
           >
