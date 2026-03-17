@@ -1,16 +1,23 @@
 import asyncio
+import os
+import pickle
 import random
 import string
-import pickle
-import os
 from typing import List
+
+from app import (
+    GAME_ID_NUM_CHAR,
+    BidModel,
+    CreateModel,
+    GameTracker,
+    JoinModel,
+    ViewModel,
+)
+from app.types.types import jsonify_dict, jsonify_list
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.websockets import WebSocketState
-from dotenv import load_dotenv
-
-from app import GameTracker, GAME_ID_NUM_CHAR, CreateModel, JoinModel, ViewModel, BidModel
-from app.types.types import jsonify_dict, jsonify_list
 
 # Define path for saving state
 STATE_FILE = f"app/game_state.pkl"
@@ -30,15 +37,20 @@ def load_state() -> None:
 load_dotenv()
 
 FRONTEND_HOST = os.getenv("FRONTEND_HOST", "127.0.0.1")
-FRONTEND_PORT = int(os.getenv("FRONTEND_PORT", 3000))
-REACT_APP_BACKEND_HOST = os.getenv("REACT_APP_BACKEND_HOST", "127.0.0.1")
-REACT_APP_BACKEND_PORT = int(os.getenv("REACT_APP_BACKEND_PORT", 8000))
+FRONTEND_PORT = os.getenv("FRONTEND_PORT", "3000") 
 
 origins = [
-    f"http://{FRONTEND_HOST}:{FRONTEND_PORT}",  # Local frontend
-    f"{FRONTEND_HOST}:{FRONTEND_PORT}",  # Local frontend without protocol
-    f"http://localhost:{FRONTEND_PORT}",  # Localhost for testing
-    "http://mmauctiongame.com",  # Production frontend
+    # Local Development
+    f"http://{FRONTEND_HOST}:{FRONTEND_PORT}",
+    f"http://localhost:{FRONTEND_PORT}",
+    "http://localhost:3000",
+    
+
+    "https://mmauctiongame.com",
+    "https://mmauctiongame.com:443",
+    
+    # For ALB redirects
+    "http://mmauctiongame.com",
 ]
 app = FastAPI()
 app.add_middleware(
@@ -56,7 +68,11 @@ countdown_tasks: dict[str, asyncio.Task] = {}
 
 # ================== URL PATHS ==================
 
-@app.post("/create-game/")
+@app.get("/api/health")
+async def health_check():
+    return {"status": "ok"}
+
+@app.post("/api/create-game/")
 async def create_game(create_model: CreateModel) -> dict:
     new_game_id: str = "".join(random.choices(string.ascii_uppercase + string.digits, k=GAME_ID_NUM_CHAR))
     gameTracker.add_game(gameId=new_game_id, creator=create_model.player)
@@ -65,7 +81,7 @@ async def create_game(create_model: CreateModel) -> dict:
     return {"id": new_game_id}
 
 
-@app.post("/join-game/")
+@app.post("/api/join-game/")
 async def join_game(join_model: JoinModel):
     if join_model.gameId not in gameTracker.games:
         raise HTTPException(status_code=404, detail="Game ID not found")
@@ -82,13 +98,13 @@ async def join_game(join_model: JoinModel):
     return {"detail": "Joined game successfully"}
 
 
-@app.post("/view-game/")
+@app.post("/api/view-game/")
 async def view_game(view_model: ViewModel):
     if view_model.gameId not in gameTracker.games:
         raise HTTPException(status_code=404, detail="Game ID not found")
-    
+
     gameTracker.calculate_player_points(view_model.gameId)
-    
+
     if view_model.gameId in game_connections:
         for ws in game_connections[view_model.gameId]:
             await ws.send_json({"players": jsonify_dict(gameTracker.get_all_players(view_model.gameId))})
@@ -123,7 +139,7 @@ async def finalize_bid(game_id: str):
         await ws.send_json({"remaining": jsonify_list(gameTracker.get_remaining_teams(game_id))})
 
 
-@app.websocket("/ws/{game_id}")
+@app.websocket("/api/ws/{game_id}")
 async def websocket_endpoint(websocket: WebSocket, game_id: str):
     await websocket.accept()
     if game_id not in game_connections:
@@ -255,7 +271,7 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str):
         game_connections[game_id].remove(websocket)
 
 
-@app.post("/bid/")
+@app.post("/api/bid/")
 async def bid(bid_model: BidModel):
     if bid_model.gameId not in gameTracker.games:
         raise HTTPException(status_code=404, detail="Game ID not found")
@@ -268,6 +284,13 @@ async def bid(bid_model: BidModel):
             await ws.send_json({"bid": gameTracker.get_current_bid(bid_model.gameId)})
             await ws.send_json({"log": f"{bid_model.player} bid on {bid_model.team} for ${bid_model.bid:.2f}"})
 
+    # Ensure there's no running countdown task or cancel if there is one
+    if bid_model.gameId in countdown_tasks and not countdown_tasks[bid_model.gameId].cancelled():
+        countdown_tasks[bid_model.gameId].cancel()
+
+    countdown_tasks[bid_model.gameId] = asyncio.create_task(start_countdown(bid_model.gameId))
+
+    return {"detail": "Bid placed successfully"}
     # Ensure there's no running countdown task or cancel if there is one
     if bid_model.gameId in countdown_tasks and not countdown_tasks[bid_model.gameId].cancelled():
         countdown_tasks[bid_model.gameId].cancel()
