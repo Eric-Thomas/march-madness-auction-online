@@ -31,7 +31,7 @@
                 "home": {
                     "names": {
                         "short": "Ohio St.",
-                        "seo": "ohio-state"
+                        "seo": "ohio-st"
                     },
                     "seed": "8"
                 },
@@ -43,14 +43,14 @@
                 "away": {
                     "names": {
                         "short": "Northern Iowa",
-                        "seo": "northern-iowa"
+                        "seo": "uni"
                     },
                     "seed": "12"
                 },
                 "home": {
                     "names": {
                         "short": "St. John's",
-                        "seo": "st-johns"
+                        "seo": "st-johns-ny"
                     },
                     "seed": "5"
                 },
@@ -62,7 +62,7 @@
                 "away": {
                     "names": {
                         "short": "Cal Baptist",
-                        "seo": "cal-baptist"
+                        "seo": "california-baptist"
                     },
                     "seed": "13"
                 },
@@ -81,7 +81,7 @@
                 "away": {
                     "names": {
                         "short": "South Florida",
-                        "seo": "south-florida"
+                        "seo": "south-fla"
                     },
                     "seed": "11"
                 },
@@ -100,14 +100,14 @@
                 "away": {
                     "names": {
                         "short": "North Dakota St.",
-                        "seo": "north-dakota-state"
+                        "seo": "north-dakota-st"
                     },
                     "seed": "14"
                 },
                 "home": {
                     "names": {
                         "short": "Michigan St.",
-                        "seo": "michigan-state"
+                        "seo": "michigan-st"
                     },
                     "seed": "3"
                 },
@@ -157,7 +157,7 @@
                 "away": {
                     "names": {
                         "short": "Lehigh / PVAMU",
-                        "seo": "lehigh-pvamu"
+                        "seo": "lehigh"
                     },
                     "seed": "16"
                 },
@@ -278,7 +278,7 @@
                 "home": {
                     "names": {
                         "short": "Saint Mary's",
-                        "seo": "saint-marys"
+                        "seo": "st-marys-ca"
                     },
                     "seed": "7"
                 },
@@ -328,7 +328,7 @@
                 "away": {
                     "names": {
                         "short": "Utah St.",
-                        "seo": "utah-state"
+                        "seo": "utah-st"
                     },
                     "seed": "9"
                 },
@@ -385,7 +385,7 @@
                 "away": {
                     "names": {
                         "short": "NC State / Texas",
-                        "seo": "nc-state-texas"
+                        "seo": "texas"
                     },
                     "seed": "11"
                 },
@@ -404,7 +404,7 @@
                 "away": {
                     "names": {
                         "short": "Kennesaw St.",
-                        "seo": "kennesaw-state"
+                        "seo": "kennesaw-st"
                     },
                     "seed": "14"
                 },
@@ -461,7 +461,7 @@
                 "away": {
                     "names": {
                         "short": "Howard / UMBC",
-                        "seo": "howard-umbc"
+                        "seo": "howard"
                     },
                     "seed": "16"
                 },
@@ -537,7 +537,7 @@
                 "away": {
                     "names": {
                         "short": "SMU / Miami (OH)",
-                        "seo": "smu-miami-oh"
+                        "seo": "miami-oh"
                     },
                     "seed": "11"
                 },
@@ -556,7 +556,7 @@
                 "away": {
                     "names": {
                         "short": "Wright St.",
-                        "seo": "wright-state"
+                        "seo": "wright-st"
                     },
                     "seed": "14"
                 },
@@ -594,14 +594,14 @@
                 "away": {
                     "names": {
                         "short": "Tennessee St.",
-                        "seo": "tennessee-state"
+                        "seo": "tennessee-st"
                     },
                     "seed": "15"
                 },
                 "home": {
                     "names": {
                         "short": "Iowa St.",
-                        "seo": "iowa-state"
+                        "seo": "iowa-st"
                     },
                     "seed": "2"
                 },
