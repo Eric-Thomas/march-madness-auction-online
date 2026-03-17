@@ -3,6 +3,7 @@ import os
 import pickle
 import random
 import string
+import uuid
 from typing import List
 
 from app import (
@@ -13,9 +14,16 @@ from app import (
     JoinModel,
     ViewModel,
 )
-from app.types.types import jsonify_dict, jsonify_list
+from app.types.types import INITIAL_BALANCE, GamePhase, jsonify_dict, jsonify_list
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import (
+    FastAPI,
+    HTTPException,
+    Request,
+    Response,
+    WebSocket,
+    WebSocketDisconnect,
+)
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.websockets import WebSocketState
 
@@ -37,13 +45,12 @@ def load_state() -> None:
 load_dotenv()
 
 FRONTEND_HOST = os.getenv("FRONTEND_HOST", "127.0.0.1")
-FRONTEND_PORT = os.getenv("FRONTEND_PORT", "3000") 
+FRONTEND_PORT = int(os.getenv("FRONTEND_PORT")) if os.getenv("FRONTEND_PORT") else 3000
 
 origins = [
-    # Local Development
     f"http://{FRONTEND_HOST}:{FRONTEND_PORT}",
     f"http://localhost:{FRONTEND_PORT}",
-    "http://localhost:3000",
+    f"http://127.0.0.1:{FRONTEND_PORT}",
     
 
     "https://mmauctiongame.com",
@@ -54,7 +61,11 @@ origins = [
 ]
 app = FastAPI()
 app.add_middleware(
-    CORSMiddleware, allow_origins=["*"], allow_credentials=False, allow_methods=["*"], allow_headers=["*"]
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Dictionary to keep track of WebSocket connections for each game
@@ -66,30 +77,85 @@ gameTracker: GameTracker = GameTracker(year=2025, month="03", day=("20", "21"))
 # Dictionary to store countdown timer tasks
 countdown_tasks: dict[str, asyncio.Task] = {}
 
-# ================== URL PATHS ==================
+# Session store: session_id -> {gameId, playerName, isCreator}
+SESSION_COOKIE_NAME = "session_id"
+SESSION_COOKIE_MAX_AGE = 60 * 60 * 24 * 7  # 7 days
+sessions: dict[str, dict] = {}
 
+SESSION_FILE = "app/session_state.pkl"
+
+def save_sessions() -> None:
+    with open(SESSION_FILE, "wb") as f:
+        pickle.dump(sessions, f)
+
+def load_sessions() -> None:
+    global sessions
+    if os.path.exists(SESSION_FILE):
+        with open(SESSION_FILE, "rb") as f:
+            sessions = pickle.load(f)
+
+def set_session_cookie(response: Response, session_id: str) -> None:
+    response.set_cookie(
+        key=SESSION_COOKIE_NAME,
+        value=session_id,
+        max_age=SESSION_COOKIE_MAX_AGE,
+        httponly=True,
+        samesite="lax",
+    )
+
+# ================== STARTUP ==================
+
+@app.on_event("startup")
+async def startup():
+    load_state()
+    load_sessions()
+
+# ================== URL PATHS ==================
 @app.get("/api/health")
 async def health_check():
     return {"status": "ok"}
 
 @app.post("/api/create-game/")
-async def create_game(create_model: CreateModel) -> dict:
+async def create_game(create_model: CreateModel, response: Response) -> dict:
     new_game_id: str = "".join(random.choices(string.ascii_uppercase + string.digits, k=GAME_ID_NUM_CHAR))
     gameTracker.add_game(gameId=new_game_id, creator=create_model.player)
     game_connections[new_game_id] = []  # Initialize the list of WebSocket connections for this game
-    save_state()  # Save state after creating a game
+
+    # Create session
+    session_id = str(uuid.uuid4())
+    sessions[session_id] = {"gameId": new_game_id, "playerName": create_model.player, "isCreator": True}
+    set_session_cookie(response, session_id)
+
+    save_state()
+    save_sessions()
     return {"id": new_game_id}
 
 
 @app.post("/api/join-game/")
-async def join_game(join_model: JoinModel):
+async def join_game(join_model: JoinModel, request: Request, response: Response):
     if join_model.gameId not in gameTracker.games:
         raise HTTPException(status_code=404, detail="Game ID not found")
+
+    # Check if player name already exists — allow rejoin if cookie matches
     if join_model.player in gameTracker.get_all_players(join_model.gameId):
+        session_id = request.cookies.get(SESSION_COOKIE_NAME)
+        if session_id and session_id in sessions:
+            session = sessions[session_id]
+            if session["gameId"] == join_model.gameId and session["playerName"] == join_model.player:
+                # Valid rejoin — refresh the cookie and let them back in
+                set_session_cookie(response, session_id)
+                return {"detail": "Rejoined game successfully"}
         raise HTTPException(status_code=400, detail="Player name already taken in this game")
 
     gameTracker.add_player(gameId=join_model.gameId, player=join_model.player)
-    save_state()  # Save state after adding a player
+
+    # Create session
+    session_id = str(uuid.uuid4())
+    sessions[session_id] = {"gameId": join_model.gameId, "playerName": join_model.player, "isCreator": False}
+    set_session_cookie(response, session_id)
+
+    save_state()
+    save_sessions()
 
     if join_model.gameId in game_connections:
         for ws in game_connections[join_model.gameId]:
@@ -98,7 +164,32 @@ async def join_game(join_model: JoinModel):
     return {"detail": "Joined game successfully"}
 
 
-@app.post("/api/view-game/")
+@app.get("/api/rejoin/")
+async def rejoin(request: Request):
+    session_id = request.cookies.get(SESSION_COOKIE_NAME)
+    if not session_id or session_id not in sessions:
+        raise HTTPException(status_code=401, detail="No active session")
+
+    session = sessions[session_id]
+    game_id = session["gameId"]
+
+    # Verify the game still exists
+    if game_id not in gameTracker.games:
+        # Clean up stale session
+        del sessions[session_id]
+        save_sessions()
+        raise HTTPException(status_code=404, detail="Game no longer exists")
+
+    game = gameTracker.games[game_id]
+    return {
+        "gameId": session["gameId"],
+        "playerName": session["playerName"],
+        "isCreator": session["isCreator"],
+        "phase": game.phase.value,
+    }
+
+
+@app.post("/view-game/")
 async def view_game(view_model: ViewModel):
     if view_model.gameId not in gameTracker.games:
         raise HTTPException(status_code=404, detail="Game ID not found")
@@ -110,6 +201,87 @@ async def view_game(view_model: ViewModel):
             await ws.send_json({"players": jsonify_dict(gameTracker.get_all_players(view_model.gameId))})
 
     return {"detail": "Viewed game successfully"}
+
+
+@app.get("/game/{game_id}/stats")
+async def game_stats(game_id: str):
+    if game_id not in gameTracker.games:
+        raise HTTPException(status_code=404, detail="Game ID not found")
+
+    game = gameTracker.games[game_id]
+    gameTracker.calculate_player_points(game_id)
+
+    players = game.players
+    history = game.auctionHistory
+
+    # Build leaderboard
+    leaderboard = []
+    for name, player in players.items():
+        teams_owned = [
+            {
+                "name": t.shortName,
+                "seed": t.seed,
+                "region": t.region,
+                "purchasePrice": t.purchasePrice,
+                "points": t.points or 0,
+            }
+            for t in player.teams.values()
+        ]
+        leaderboard.append({
+            "name": name,
+            "points": player.points,
+            "balance": player.balance,
+            "spent": INITIAL_BALANCE - player.balance,
+            "teamsOwned": len(player.teams),
+            "teams": teams_owned,
+        })
+    leaderboard.sort(key=lambda p: p["points"], reverse=True)
+
+    # Average cost per seed
+    seed_costs: dict[int, list[int]] = {}
+    for sale in history:
+        if sale.price > 0:
+            seed_costs.setdefault(sale.seed, []).append(sale.price)
+    avg_cost_per_seed = [
+        {
+            "seed": seed,
+            "avgCost": round(sum(prices) / len(prices), 2),
+            "totalSpent": sum(prices),
+            "teamsSold": len(prices),
+        }
+        for seed, prices in sorted(seed_costs.items())
+    ]
+
+    # Full auction history
+    sale_log = [sale.model_dump() for sale in history]
+
+    return {
+        "gameId": game_id,
+        "phase": game.phase.value,
+        "leaderboard": leaderboard,
+        "avgCostPerSeed": avg_cost_per_seed,
+        "auctionHistory": sale_log,
+        "totalTeamsSold": sum(1 for s in history if s.buyer),
+        "totalTeamsUnsold": sum(1 for s in history if not s.buyer),
+    }
+
+
+@app.post("/game/{game_id}/refresh-scores")
+async def refresh_scores(game_id: str):
+    if game_id not in gameTracker.games:
+        raise HTTPException(status_code=404, detail="Game ID not found")
+
+    count = gameTracker.refresh_match_results()
+    gameTracker.calculate_player_points(game_id)
+    save_state()
+
+    # Broadcast updated data to any connected clients
+    if game_id in game_connections:
+        for ws in game_connections[game_id]:
+            await ws.send_json({"players": jsonify_dict(gameTracker.get_all_players(game_id))})
+            await ws.send_json({"match_results": jsonify_list(gameTracker.match_results)})
+
+    return {"detail": f"Refreshed {count} match results"}
 
 
 async def start_countdown(game_id: str):
@@ -129,22 +301,31 @@ async def finalize_bid(game_id: str):
     purchase_msg = f"No one bought {winner.team}!" if not winner.player else f"{winner.player} bought {winner.team} for ${winner.bid:.2f}!"
 
     gameTracker.calculate_player_points(game_id)
+    save_state()
+
+    current_team = gameTracker.get_current_team(game_id)
+    game = gameTracker.games[game_id]
 
     for ws in game_connections[game_id]:
         await ws.send_json({"log": purchase_msg})
-        await ws.send_json({"team": gameTracker.get_current_team(game_id).model_dump()})
+        await ws.send_json({"team": current_team.model_dump() if current_team else None})
         await ws.send_json({"bid": gameTracker.get_current_bid(game_id)})
+        await ws.send_json({"current_bidder": gameTracker.get_current_bidder(game_id)})
         await ws.send_json({"countdown": gameTracker.get_current_countdown(game_id)})
         await ws.send_json({"players": jsonify_dict(gameTracker.get_all_players(game_id))})
         await ws.send_json({"remaining": jsonify_list(gameTracker.get_remaining_teams(game_id))})
+        if game.phase == GamePhase.ENDED:
+            await ws.send_json({"phase": "ended"})
 
 
 @app.websocket("/api/ws/{game_id}")
 async def websocket_endpoint(websocket: WebSocket, game_id: str):
     await websocket.accept()
-    if game_id not in game_connections:
+    if game_id not in gameTracker.games:
         await websocket.close(code=4000, reason="Invalid game ID")
         return
+    if game_id not in game_connections:
+        game_connections[game_id] = []
     game_connections[game_id].append(websocket)
 
     async def send_participant_updates():
@@ -166,6 +347,7 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str):
             while True:
                 if websocket.application_state == WebSocketState.CONNECTED:
                     await websocket.send_json({"bid": gameTracker.get_current_bid(game_id)})
+                    await websocket.send_json({"current_bidder": gameTracker.get_current_bidder(game_id)})
                 else:
                     break  # Stop sending if the connection is no longer active
                 await asyncio.sleep(10)
@@ -237,6 +419,8 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str):
                 if websocket.application_state == WebSocketState.CONNECTED:
                     message = await websocket.receive_text()
                     if message == "startGame" and websocket in game_connections[game_id][:1]:
+                        gameTracker.games[game_id].phase = GamePhase.AUCTION
+                        save_state()
                         for participant_ws in game_connections[game_id]:
                             await participant_ws.send_text("gameStarted")
                         break  # Exit the loop if the game starts
@@ -282,15 +466,9 @@ async def bid(bid_model: BidModel):
     if bid_model.gameId in game_connections:
         for ws in game_connections[bid_model.gameId]:
             await ws.send_json({"bid": gameTracker.get_current_bid(bid_model.gameId)})
+            await ws.send_json({"current_bidder": gameTracker.get_current_bidder(bid_model.gameId)})
             await ws.send_json({"log": f"{bid_model.player} bid on {bid_model.team} for ${bid_model.bid:.2f}"})
 
-    # Ensure there's no running countdown task or cancel if there is one
-    if bid_model.gameId in countdown_tasks and not countdown_tasks[bid_model.gameId].cancelled():
-        countdown_tasks[bid_model.gameId].cancel()
-
-    countdown_tasks[bid_model.gameId] = asyncio.create_task(start_countdown(bid_model.gameId))
-
-    return {"detail": "Bid placed successfully"}
     # Ensure there's no running countdown task or cancel if there is one
     if bid_model.gameId in countdown_tasks and not countdown_tasks[bid_model.gameId].cancelled():
         countdown_tasks[bid_model.gameId].cancel()

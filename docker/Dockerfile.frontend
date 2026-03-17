@@ -5,19 +5,23 @@ FROM node:20
 WORKDIR /app
 
 # Copy package.json and package-lock.json
-COPY ../frontend/package*.json ./
+COPY frontend/package*.json ./
 
 # Install any needed packages
 RUN npm install
 
 # Bundle app source
-COPY ../frontend/ .
+COPY frontend/ .
 
 # Set environment variables
 ARG REACT_APP_BACKEND_HOST
 ARG REACT_APP_BACKEND_PORT
 ENV REACT_APP_BACKEND_HOST=$REACT_APP_BACKEND_HOST
 ENV REACT_APP_BACKEND_PORT=$REACT_APP_BACKEND_PORT
+ARG VITE_BACKEND_HOST
+ARG VITE_BACKEND_PORT
+ENV VITE_BACKEND_HOST=$VITE_BACKEND_HOST
+ENV VITE_BACKEND_PORT=$VITE_BACKEND_PORT
 
 
 # # Build your app
@@ -25,4 +29,4 @@ RUN npm run build
 #
 # # Install serve and serve your React app
 RUN npm install -g serve
-CMD ["serve", "-s", "build"]
+CMD ["serve", "-s", "dist"]
