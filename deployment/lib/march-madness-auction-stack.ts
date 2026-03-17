@@ -113,7 +113,7 @@ export class MarchMadnessAuctionStack extends cdk.Stack {
     });
 
     frontEndTaskDef.addContainer('FrontEndContainer', {
-      image: ecs.ContainerImage.fromRegistry(`${props?.env?.account}.dkr.ecr.us-east-1.amazonaws.com/march-madness-auction:frontend.v3.1.0`), // Update this with newest version to deploy latest changes
+      image: ecs.ContainerImage.fromRegistry(`${props?.env?.account}.dkr.ecr.us-east-1.amazonaws.com/march-madness-auction:frontend.v3.1.1`), // Update this with newest version to deploy latest changes
       cpu: 256,
       memoryLimitMiB: 512,
       containerName: 'march-madness-auction-frontend',
@@ -154,7 +154,7 @@ export class MarchMadnessAuctionStack extends cdk.Stack {
     });
 
     backEndTaskDef.addContainer('BackEndContainer', {
-      image: ecs.ContainerImage.fromRegistry(`${props?.env?.account}.dkr.ecr.us-east-1.amazonaws.com/march-madness-auction:backend.v3.1.0`), // Update this with newest version to deploy latest changes
+      image: ecs.ContainerImage.fromRegistry(`${props?.env?.account}.dkr.ecr.us-east-1.amazonaws.com/march-madness-auction:backend.v3.1.1`), // Update this with newest version to deploy latest changes
       cpu: 256,
       memoryLimitMiB: 256,
       containerName: 'march-madness-auction-backend',
