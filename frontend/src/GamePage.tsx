@@ -1,11 +1,11 @@
 import { Typography } from "@mui/joy";
 import { Grid, Paper, Card } from "@mui/material";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
 import AuctionBiddingPanel from "./AuctionBiddingPanel";
 import Bracket from "./Bracket";
-import { PlayerInfo, TeamInfo, BACKEND_WS_URL, normalizeTeamKey } from "./Utils";
+import { PlayerInfo, TeamInfo, BACKEND_HTTP_URL, BACKEND_WS_URL, normalizeTeamKey } from "./Utils";
 
 import "./css/App.css";
 import "./css/Fonts.css";
@@ -624,11 +624,13 @@ function TeamsRail(props: TeamsRailProps) {
     );
 }
 
-function useGameWebSocket(gameId: string) {
+function useGameWebSocket(gameId: string | null) {
     const [wsData, setWsData] = useState<WebSocketMessage>({});
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
+        if (!gameId) return;
+
         const ws = new WebSocket(`${BACKEND_WS_URL}/ws/${gameId}`);
 
         ws.onerror = (socketError) => {
@@ -728,7 +730,37 @@ function useGameWebSocket(gameId: string) {
 
 function GamePage() {
     const location = useLocation();
-    const { gameId, playerName } = location.state || {};
+    const navigate = useNavigate();
+    const [gameId, setGameId] = useState<string | null>(location.state?.gameId || null);
+    const [playerName, setPlayerName] = useState<string>(location.state?.playerName || "");
+
+    // If no state from navigation, try to recover from session cookie
+    useEffect(() => {
+        if (location.state?.gameId) return;
+        const recover = async () => {
+            try {
+                const response = await fetch(`${BACKEND_HTTP_URL}/rejoin/`, { credentials: "include" });
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.phase === "ended") {
+                        navigate("/view", { state: { gameId: data.gameId } });
+                        return;
+                    }
+                    if (data.phase === "lobby") {
+                        navigate("/lobby", { state: { gameId: data.gameId, isCreator: data.isCreator, playerName: data.playerName } });
+                        return;
+                    }
+                    setGameId(data.gameId);
+                    setPlayerName(data.playerName);
+                } else {
+                    navigate("/");
+                }
+            } catch {
+                navigate("/");
+            }
+        };
+        recover();
+    }, [location.state, navigate]);
 
     const [currentHighestBid, setCurrentHighestBid] = useState<number>(0);
     const [currentBidder, setCurrentBidder] = useState("");
@@ -991,6 +1023,10 @@ function GamePage() {
             setExpandedSoldTeamKey(null);
         }
     };
+
+    if (!gameId) {
+        return null;
+    }
 
     return (
         <div id="outer-container" className="game-page-shell">
