@@ -5,13 +5,13 @@ FROM node:20
 WORKDIR /app
 
 # Copy package.json and package-lock.json
-COPY ../frontend/package*.json ./
+COPY frontend/package*.json ./
 
 # Install any needed packages
 RUN npm install
 
 # Bundle app source
-COPY ../frontend/ .
+COPY frontend/ .
 
 # Set environment variables
 ARG REACT_APP_BACKEND_HOST

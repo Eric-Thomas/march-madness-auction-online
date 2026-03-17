@@ -45,7 +45,7 @@ def load_state() -> None:
 load_dotenv()
 
 FRONTEND_HOST = os.getenv("FRONTEND_HOST", "127.0.0.1")
-FRONTEND_PORT = int(os.getenv("FRONTEND_PORT", 3000))
+FRONTEND_PORT = int(os.getenv("FRONTEND_PORT")) if os.getenv("FRONTEND_PORT") else 3000
 
 origins = [
     f"http://{FRONTEND_HOST}:{FRONTEND_PORT}",
@@ -115,7 +115,7 @@ async def startup():
 async def health_check():
     return {"status": "ok"}
 
-@app.post("api/create-game/")
+@app.post("/api/create-game/")
 async def create_game(create_model: CreateModel, response: Response) -> dict:
     new_game_id: str = "".join(random.choices(string.ascii_uppercase + string.digits, k=GAME_ID_NUM_CHAR))
     gameTracker.add_game(gameId=new_game_id, creator=create_model.player)
@@ -131,7 +131,7 @@ async def create_game(create_model: CreateModel, response: Response) -> dict:
     return {"id": new_game_id}
 
 
-@app.post("api/join-game/")
+@app.post("/api/join-game/")
 async def join_game(join_model: JoinModel, request: Request, response: Response):
     if join_model.gameId not in gameTracker.games:
         raise HTTPException(status_code=404, detail="Game ID not found")
@@ -164,7 +164,7 @@ async def join_game(join_model: JoinModel, request: Request, response: Response)
     return {"detail": "Joined game successfully"}
 
 
-@app.get("api/rejoin/")
+@app.get("/api/rejoin/")
 async def rejoin(request: Request):
     session_id = request.cookies.get(SESSION_COOKIE_NAME)
     if not session_id or session_id not in sessions:
