@@ -94,6 +94,22 @@ function isSeedBundleTeam(team?: Pick<TeamInfo, "region" | "seed"> | null) {
     return team.region === "bundle" && (team.seed === 15 || team.seed === 16);
 }
 
+function getAuctionRoundKey(team?: Pick<TeamInfo, "shortName" | "urlName" | "region" | "seed"> | null) {
+    if (!team) {
+        return "";
+    }
+
+    if (team.seed === 15 || team.seed === 16) {
+        return `bundle:${team.seed}`;
+    }
+
+    return normalizeTeamKey(team);
+}
+
+function countAuctionRounds(teams: TeamInfo[]) {
+    return new Set(teams.map((team) => getAuctionRoundKey(team)).filter(Boolean)).size;
+}
+
 function getTeamDisplayName(team: Pick<TeamInfo, "shortName" | "region" | "seed">) {
     return isSeedBundleTeam(team)
         ? `${team.seed}-SEED BUNDLE`
@@ -774,11 +790,20 @@ function GamePage() {
         }
     }, [expandedPlayerName, playerInfos]);
 
-    const totalAuctions = allTeams.length === 65 ? 64 : allTeams.length;
-    const auctionNumber = totalAuctions > 0
-        ? Math.min(totalAuctions, Math.max(1, totalAuctions - remainingTeams.length + (team.shortName ? 1 : 0)))
-        : 0;
     const isAuctionLive = remainingTeams.length > 0 || Boolean(team.shortName);
+    const totalAuctions = useMemo(() => countAuctionRounds(allTeams), [allTeams]);
+    const auctionNumber = useMemo(() => {
+        if (totalAuctions === 0) {
+            return 0;
+        }
+
+        const remainingAuctionRounds = countAuctionRounds(remainingTeams);
+        if (!isAuctionLive && remainingAuctionRounds === 0) {
+            return totalAuctions;
+        }
+
+        return Math.min(totalAuctions, Math.max(1, totalAuctions - remainingAuctionRounds));
+    }, [isAuctionLive, remainingTeams, totalAuctions]);
     const activePlayerBalance = playerName ? (playerInfos.get(playerName)?.balance || 0) : 0;
     const orderedPlayers = Array.from(playerInfos.entries());
     const expandedPlayerTeams = expandedPlayerName ? (playerInfos.get(expandedPlayerName)?.teams || []) : [];
